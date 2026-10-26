@@ -1,1 +1,47 @@
-[]
+[
+  {
+    "name": "context-engineering-is-software-engineering",
+    "id": "750D396C5CADCEBD!s5d302eab3802442fae53c13314c6c9c4",
+    "eTag": "\"{5D302EAB-3802-442F-AE53-C13314C6C9C4},437\""
+  },
+  {
+    "name": "agentic-ai-technical-audience",
+    "id": "750D396C5CADCEBD!s8a6413654739463199c1f958ee5867e4",
+    "eTag": "\"{8A641365-4739-4631-99C1-F958EE5867E4},960\""
+  },
+  {
+    "name": "agentic-ai-general-audience",
+    "id": "750D396C5CADCEBD!sc530997013c849a5890501e4058861a4",
+    "eTag": "\"{C5309970-13C8-49A5-8905-01E4058861A4},705\""
+  },
+  {
+    "name": "agentic-ai-hands-on-workshop",
+    "id": "750D396C5CADCEBD!s2b41af53e1ec499983f1b0c7e480e463",
+    "eTag": "\"{2B41AF53-E1EC-4999-83F1-B0C7E480E463},526\""
+  },
+  {
+    "name": "how-to-train-your-ai-language-activity",
+    "id": "750D396C5CADCEBD!s67f4c2a13c6d48f1b533ba6f8d574bd0",
+    "eTag": "\"{67F4C2A1-3C6D-48F1-B533-BA6F8D574BD0},2147\""
+  },
+  {
+    "name": "how-to-train-your-ai-coding-activity",
+    "id": "750D396C5CADCEBD!s36fbd0b5c08d47ab88d66099a2b71baa",
+    "eTag": "\"{36FBD0B5-C08D-47AB-88D6-6099A2B71BAA},2730\""
+  },
+  {
+    "name": "ai-technical-interview-workshop",
+    "id": "750D396C5CADCEBD!s98c7446c74dc44b380714601e46b10f5",
+    "eTag": "\"{98C7446C-74DC-44B3-8071-4601E46B10F5},1971\""
+  },
+  {
+    "name": "were-not-cooked",
+    "id": "750D396C5CADCEBD!s643042aa04e34eecb8739f3bb65b3d52",
+    "eTag": "\"{643042AA-04E3-4EEC-B873-9F3BB65B3D52},38\""
+  },
+  {
+    "name": "precision-meets-creativity-with-microsoft-designer",
+    "id": "750D396C5CADCEBD!s48c9fe84cc32460c97807b0d6df533ee",
+    "eTag": "\"{48C9FE84-CC32-460C-9780-7B0D6DF533EE},101\""
+  }
+]
