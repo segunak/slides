@@ -2,9 +2,9 @@
 
 <https://segunakinyemi.com/slides/>
 
-A place for my slide decks because everyone these days has started making web-based decks because it's easy with AI agents.
+A place for my slide decks because everyone these days has started making web-based decks with AI agents.
 
-But I don't want to give up manual editing in some form. I don't want a totally AI dependent (tokens aren't free) workflow for editing slide decks. I still want to be able to click a slide, change some text, and move things around, as I've grown accustomed to in PowerPoint/. So I have this repo, which uses [PPTX2HTML](https://github.com/g21589/PPTX2HTML) to convert my PowerPoints into HTML web endpoints I can easily share. This repo includes automation to watch my OneDrive for certain decks and automatically update the web endpoint when I edit decks.
+But I don't want to give up manual editing in some form. I don't want a totally AI dependent (tokens aren't free) workflow for editing slide decks. I still want to be able to click a slide, change some text, and move things around, as I've grown accustomed to in PowerPoint. So I have this repo, which uses [PPTX2HTML](https://github.com/g21589/PPTX2HTML) to convert my PowerPoints into HTML web endpoints I can easily share. This repo includes automation to watch my OneDrive for certain decks and automatically update the web endpoint when I edit decks.
 
 [Pamela Fox's ai-powered-presentation-workflow](https://github.com/pamelafox/ai-powered-presentation-workflow) was the catalyst for me setting this up. She's able to have amazing slides like <https://pamelafox.github.io/my-py-talks/impact-of-ai-on-cs/>, backed by a GitHub repo <https://github.com/pamelafox/my-py-talks/tree/main/impact-of-ai-on-cs>, fully edited by agents as she explains in <https://pamelafox.github.io/ai-powered-presentation-workflow/>, and I was like, I want that.
 

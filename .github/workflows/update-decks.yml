@@ -11,12 +11,9 @@ on:
         default: false
   push:
     branches: [main]
-    paths:
-      - decks.yml
-      - package.json
-      - package-lock.json
-      - scripts/**
-      - .github/workflows/update-decks.yml
+    paths-ignore:
+      - decks/**
+      - .github/decks-state.json
   pull_request:
     paths:
       - decks.yml
@@ -25,16 +22,19 @@ on:
       - scripts/**
       - .github/skills/onedrive-deck-id/**
       - .github/workflows/update-decks.yml
+      - .github/workflows/publish-pages.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: update-decks-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'main' }}
+  group: ${{ github.event_name == 'pull_request' && format('slides-tests-{0}', github.event.pull_request.number) || 'slides-publication' }}
+  queue: max
   cancel-in-progress: false
 
 jobs:
   test:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -50,18 +50,20 @@ jobs:
 
   update:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      changed: ${{ steps.sync.outputs.changed }}
+      sha: ${{ steps.sync.outputs.sha }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          ref: main
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "24"
           cache: npm
-      - run: npm ci --ignore-scripts --no-fund
       - name: Create publisher token
         id: publisher
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
@@ -70,26 +72,23 @@ jobs:
           private-key: ${{ secrets.SLIDE_PUBLISHER_APP_PRIVATE_KEY }}
           permission-contents: write
           permission-secrets: write
-      - name: Update changed presentations
-        run: npm run update-decks
+      - name: Synchronize and push generated presentations
+        id: sync
+        run: node scripts/sync-decks.mjs
         env:
+          APP_SLUG: ${{ steps.publisher.outputs.app-slug }}
           ONEDRIVE_CLIENT_ID: ${{ vars.ONEDRIVE_CLIENT_ID }}
           ONEDRIVE_AUTH_CACHE: ${{ secrets.ONEDRIVE_AUTH_CACHE }}
           GH_TOKEN: ${{ steps.publisher.outputs.token }}
           FORCE_UPDATE: ${{ github.event_name == 'workflow_dispatch' && inputs.force && 'true' || 'false' }}
-      - name: Commit generated changes
-        env:
-          GH_TOKEN: ${{ steps.publisher.outputs.token }}
-          APP_SLUG: ${{ steps.publisher.outputs.app-slug }}
-        run: |
-          git add -- decks .github/decks-state.json
-          if git diff --cached --quiet; then
-            echo "No generated changes to commit."
-            exit 0
-          fi
-          bot_id=$(gh api "/users/${APP_SLUG}[bot]" --jq '.id')
-          git config user.name "${APP_SLUG}[bot]"
-          git config user.email "${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com"
-          gh auth setup-git
-          git commit -m "Update published decks"
-          git push origin HEAD:main
+
+  publish:
+    needs: update
+    if: needs.update.outputs.changed == 'true'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/publish-pages.yml
+    with:
+      commit: ${{ needs.update.outputs.sha }}

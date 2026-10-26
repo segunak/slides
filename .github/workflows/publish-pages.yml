@@ -1,18 +1,21 @@
 name: Publish Pages
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - decks/**
-      - .github/workflows/publish-pages.yml
+  workflow_call:
+    inputs:
+      commit:
+        description: Exact generated commit successfully pushed by Update Decks
+        type: string
+        required: true
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: pages
+  # An automatic call is already inside the updater's publication lock; a manual run takes that same lock.
+  group: ${{ inputs.commit != '' && format('slides-publication-child-{0}', github.run_id) || 'slides-publication' }}
+  queue: max
   cancel-in-progress: false
 
 jobs:
@@ -30,12 +33,20 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          ref: ${{ inputs.commit || 'main' }}
           persist-credentials: false
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
       - name: Upload presentation website
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: decks
+      - name: Refuse superseded presentation output
+        run: |
+          git fetch --no-tags origin main
+          if [ "$(git rev-parse HEAD:decks)" != "$(git rev-parse origin/main:decks)" ]; then
+            echo "::error::Newer presentation output exists on main. Refusing to publish an older snapshot; run Publish Pages again."
+            exit 1
+          fi
       - name: Deploy presentation website
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5

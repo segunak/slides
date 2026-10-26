@@ -19,8 +19,10 @@ This repository publishes selected personal OneDrive PowerPoints at `https://seg
 - `.github/decks-state.json` only remembers each published deck's name, OneDrive ID, and last published `eTag`. The updater maintains this list to skip unchanged decks. There is no schema version or publisher fingerprint.
 - After changing the converter or publishing code, use Run workflow with **Rebuild all configured decks** to regenerate unchanged source decks.
 - Prepare and validate all changed output before replacing the working publication. A missing or inaccessible source is an error, not a request to unpublish it. Remove its configuration entry to unpublish intentionally.
-- Only the Update Decks workflow makes automatic commits, limited to `decks` and generated state. Use the app token so its pushes trigger Pages. Do not force-push or automatically merge concurrent source changes.
-- Publish Pages only uploads the `decks` directory and deploys it. No Jekyll, OneDrive access, or conversion belongs there. Generated commits must not retrigger the updater.
+- Only Update Decks makes automatic commits, limited to generated output and state. If main advances during conversion, retry against its latest revision rather than force-pushing or merging stale output over source changes.
+- Publish only after the updater successfully pushes a complete generated commit, using that exact commit. Keep manual dispatch available on both workflows. A standalone manual Pages run publishes the latest committed output without converting decks.
+- Serialize update-through-deployment with manual publishing so they cannot overlap. A reusable Pages call must not reacquire its caller's lock. Refuse output older than the presentation files already on main.
+- Publish Pages only uploads the generated site and deploys it. No Jekyll, OneDrive access, or conversion belongs there. Generated commits must not retrigger the updater or independently start a second deployment.
 - Keep the public-facing README free of internal setup details. Do not commit or push from an agent session.
 
 ## Local Checks
