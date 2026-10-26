@@ -38,7 +38,11 @@ export function syncDecks({ env = process.env, run = runCommand, log = console.l
         git('switch', '--detach', 'origin/main');
         const base = git('rev-parse', 'HEAD');
         run('npm', ['ci', '--ignore-scripts', '--no-fund'], { inherit: true });
+        run('npm', ['exec', '--', 'playwright', 'install', '--with-deps', 'chromium'], { inherit: true });
         run('npm', ['test'], { inherit: true });
+        if (env.GITHUB_EVENT_NAME === 'push' || env.FORCE_UPDATE === 'true') {
+            run('npm', ['run', 'verify:converter'], { inherit: true });
+        }
         run('npm', ['run', 'update-decks'], { inherit: true });
         git('add', '--', 'decks', '.github/decks-state.json');
         const diff = run('git', ['diff', '--cached', '--quiet'], { allowFailure: true });

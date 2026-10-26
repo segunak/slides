@@ -74,6 +74,7 @@ test('commits only generated output after checking out, installing, testing, and
         'git fetch --no-tags origin main',
         'git switch --detach origin/main',
         'npm ci --ignore-scripts --no-fund',
+        'npm exec -- playwright install --with-deps chromium',
         'npm test',
         'npm run update-decks',
         'git add -- decks .github/decks-state.json',
@@ -154,13 +155,33 @@ test('repeated branch movement is bounded and never produces publication outputs
     assert.equal(f.logs.length, 2);
 });
 
-for (const failure of ['npm ci --ignore-scripts --no-fund', 'npm test', 'npm run update-decks']) {
+for (const failure of ['npm ci --ignore-scripts --no-fund', 'npm exec -- playwright install --with-deps chromium', 'npm test', 'npm run update-decks']) {
     test(`${failure} failure cannot commit or publish output`, () => {
         const f = fixture({ failure });
         assert.throws(() => syncDecks(f.options), /Failed:/);
         assert.ok(!f.calls.some(call => call.command === 'git' && ['add', 'commit', 'push'].includes(call.args[0])));
     });
 }
+
+test('upstream Chromium verification runs before publishing for code pushes and forced rebuilds, not routine schedules', () => {
+    for (const env of [
+        { GITHUB_EVENT_NAME: 'push' },
+        { GITHUB_EVENT_NAME: 'workflow_dispatch', FORCE_UPDATE: 'true' },
+        { GITHUB_EVENT_NAME: 'schedule' }
+    ]) {
+        const f = fixture();
+        Object.assign(f.options.env, env);
+        syncDecks(f.options);
+        const commands = f.calls.map(call => [call.command, ...call.args].join(' '));
+        const verification = commands.indexOf('npm run verify:converter');
+        if (env.GITHUB_EVENT_NAME === 'schedule') assert.equal(verification, -1);
+        else assert.ok(verification > commands.indexOf('npm test') && verification < commands.indexOf('npm run update-decks'));
+    }
+    const f = fixture({ failure: 'npm run verify:converter' });
+    f.options.env.GITHUB_EVENT_NAME = 'push';
+    assert.throws(() => syncDecks(f.options), /Failed:/);
+    assert.ok(!f.calls.some(call => call.command === 'git' && ['add', 'commit', 'push'].includes(call.args[0])));
+});
 
 test('requires Actions and app credentials before running any Git command', () => {
     for (const env of [{}, { GITHUB_ACTIONS: 'true' }, { GITHUB_ACTIONS: 'true', GH_TOKEN: 'token', APP_SLUG: 'bad/slug' }]) {

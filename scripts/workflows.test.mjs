@@ -55,6 +55,16 @@ test('updater runs the Actions-only synchronization coordinator with its app tok
     assert.equal(checkout.with.ref, 'main');
 });
 
+test('pull requests install Chromium and run browser/PDF regressions and upstream verification', async () => {
+    const update = await workflow('update-decks');
+    assert.deepEqual(update.jobs.test.steps.filter(step => step.run).map(step => step.run), [
+        'npm ci --ignore-scripts --no-fund',
+        'npx playwright install --with-deps chromium',
+        'npm test',
+        'npm run verify:converter'
+    ]);
+});
+
 test('publication depends on a changed, successfully pushed update and passes its exact SHA', async () => {
     const update = await workflow('update-decks');
     assert.equal(update.jobs.publish.needs, 'update');

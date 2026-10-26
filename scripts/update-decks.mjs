@@ -1,17 +1,17 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { access, cp, lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { parseDocument } from 'yaml';
 import { connectOneDrive } from './onedrive.mjs';
+import { converterRoot, correctedConverter } from './converter-player.mjs';
+import { addDownloadControls, downloadLinks, downloadMarker, releaseDownloads } from './downloads.mjs';
+import { verifyAndExport } from './presentation-browser.mjs';
 
 const exec = promisify(execFile);
-const require = createRequire(import.meta.url);
-const converterRoot = path.dirname(require.resolve('pptx2html/package.json'));
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const MAX_FILE_BYTES = 100 * 1024 * 1024;
 export const MAX_SITE_BYTES = 1_000_000_000;
@@ -67,13 +67,16 @@ async function exists(file) {
 
 export async function convertDeck(input, output, log = console.log) {
     try {
-        const { stderr } = await exec(process.execPath, [
-            path.join(converterRoot, 'bin', 'pptx2html.js'), input,
+        const cli = await correctedConverter();
+        const conversion = exec(process.execPath, [
+            '--input-type=module', '-', input,
             '--output', path.join(output, 'index.html'), '--assets', path.join(output, 'assets'), '--strict'
         ], { timeout: 300_000, maxBuffer: 4 * 1024 * 1024, windowsHide: true });
+        conversion.child.stdin.end(cli);
+        const { stderr } = await conversion;
         if (stderr.trim()) log(stderr.trim());
     } catch (error) {
-        throw new Error(`PPTX2HTML conversion failed: ${error.stderr?.trim() || 'converter exited or timed out'}`);
+        throw new Error(`PPTX2HTML conversion failed: ${error.stderr?.trim() || error.message}`, { cause: error });
     }
 }
 
@@ -84,7 +87,7 @@ function escapeHtml(value) {
 export function renderIndex(decks) {
     const items = decks.map(deck => {
         const url = `https://segunakinyemi.com/slides/${deck.name}/`;
-        return `    <li><a href="${url}">${escapeHtml(deck.title)}</a><br><small>${url}</small></li>`;
+        return `    <li><a href="${url}">${escapeHtml(deck.title)}</a><br><small>${url}</small><br>${downloadLinks(deck.name)}</li>`;
     }).join('\n');
     return `<!doctype html>
 <html lang="en">
@@ -154,6 +157,8 @@ export async function updateDecks({
     drive,
     force = false,
     convert = convertDeck,
+    verify = verifyAndExport,
+    downloads = releaseDownloads(),
     license = () => readFile(path.join(converterRoot, 'LICENSE'), 'utf8'),
     tempRoot = tmpdir(),
     log = console.log
@@ -165,12 +170,15 @@ export async function updateDecks({
         'Temporary PowerPoint downloads must stay outside the repository.');
     const config = readConfig(await readFile(path.join(root, 'decks.yml'), 'utf8'));
     const previous = readState(await readFile(path.join(root, '.github', 'decks-state.json'), 'utf8'));
+    const assets = await downloads.list();
     const planned = [];
     for (const deck of config) {
         const item = await drive.getItem(deck.id);
         const old = previous.find(published => published.name === deck.name);
+        const htmlFile = path.join(root, 'decks', deck.name, 'index.html');
         const changed = force || old?.id !== deck.id || old.eTag !== item.eTag ||
-            !await exists(path.join(root, 'decks', deck.name, 'index.html'));
+            !assets.has(`${deck.name}.pptx`) || !assets.has(`${deck.name}.pdf`) ||
+            !await exists(htmlFile) || !(await readFile(htmlFile, 'utf8')).includes(downloadMarker);
         planned.push({ ...deck, item, changed });
     }
     const removed = previous.filter(deck => !config.some(current => current.name === deck.name));
@@ -199,6 +207,7 @@ export async function updateDecks({
         for (const deck of removed) {
             await rm(path.join(site, deck.name), { recursive: true, force: true });
         }
+        const preparedDownloads = [];
         for (const deck of changedDecks) {
             log(`Converting ${deck.name}.`);
             const input = path.join(temporary, `${deck.name}.pptx`);
@@ -208,11 +217,17 @@ export async function updateDecks({
             await convert(input, output, log);
             const html = await readFile(path.join(output, 'index.html'), 'utf8');
             assert.ok(html.includes('id="pp-data"') && html.includes('PPTX2HTML'), `Missing interactive converter output for ${deck.name}.`);
+            const pdf = path.join(temporary, `${deck.name}.pdf`);
+            await writeFile(path.join(output, 'index.html'), addDownloadControls(html, deck.name));
+            await verify(output, pdf, { log });
+            preparedDownloads.push({ name: deck.name, pptx: input, pdf });
         }
         await writeFile(path.join(site, 'index.html'), index);
         await writeFile(path.join(site, 'pptx2html-license.txt'), await license());
         const bytes = await validatePublicFiles(site);
         await writeFile(path.join(stage, 'state.json'), JSON.stringify(next, null, 2) + '\n');
+        const removedAssets = removed.flatMap(deck => [`${deck.name}.pptx`, `${deck.name}.pdf`]).filter(name => assets.has(name));
+        await downloads.publish(preparedDownloads, removedAssets);
         await replacePublication(root, stage);
         log(`Prepared ${changedDecks.length} updated and ${removed.length} removed decks (${bytes} published bytes).`);
         return { changed: true, updated: changedDecks.map(deck => deck.name), removed: removed.map(deck => deck.name) };

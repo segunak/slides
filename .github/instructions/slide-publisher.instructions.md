@@ -12,13 +12,16 @@ This repository publishes selected personal OneDrive PowerPoints at `https://seg
 - The GitHub App needs Contents and Secrets read/write access to this repository. It saves renewed MSAL authentication before conversion. Credentials must never enter files, artifacts, caches, logs, or commits.
 - One-time sign-in helpers belong outside the repository. If Microsoft revokes access, reconnect using a temporary local helper and replace the Actions secret.
 - Use the [OneDrive deck-ID skill](../skills/onedrive-deck-id/SKILL.md) for read-only file-ID lookup and manual command guidance. Do not run the live publisher to discover an ID.
-- Download source PowerPoints only into the runner's temporary directory, outside the checkout. Never commit or publish the original PowerPoints. Do not modify OneDrive sources.
+- Download source PowerPoints only into the runner's temporary directory, outside the checkout. Never commit the originals or include them in Pages output. Do not modify OneDrive sources.
 - Run the pinned PPTX2HTML CLI with its interactive player, separate assets, and strict conversion. Preserve notes, hidden slides, animations, transitions, and the converter's normal functionality.
+- Preserve authored text formatting through animation, backward navigation, and replay. Correct scientific-notation motion paths and signed animation speeds without changing authored motion. Guard local source corrections against incompatible upstream changes and leave the installed dependency unchanged.
+- Verify staged presentations with Playwright headless Chromium before publishing. Export PDFs with Chromium, with one correctly sized page per slide and completed reveals. Validate page count, dimensions, final text, and loaded assets.
+- Publish unaltered originals and validated PDFs as stable assets in one rolling GitHub Release. Replace edited decks' download pairs rather than accumulating versions. Remove only intentionally unpublished decks' assets. Binaries stay out of Git and Pages.
 - `decks` contains generated HTML, media, a public deck index, and converter attribution. Never hand-edit generated presentations.
-- Keep the HTML index complete and current with every successfully published deck's title and URL. It is the public deck directory.
+- Keep the HTML index complete and current with every successfully published deck's title, URL, and both downloads. Presentations expose the same downloads without replacing their player controls.
 - `.github/decks-state.json` only remembers each published deck's name, OneDrive ID, and last published `eTag`. The updater maintains this list to skip unchanged decks. There is no schema version or publisher fingerprint.
 - After changing the converter or publishing code, use Run workflow with **Rebuild all configured decks** to regenerate unchanged source decks.
-- Prepare and validate all changed output before replacing the working publication. A missing or inaccessible source is an error, not a request to unpublish it. Remove its configuration entry to unpublish intentionally.
+- Prepare and validate all changed output before uploading downloads or replacing the working publication. Upload failure prevents website publication. Stable downloads may briefly advance before Pages deploys, which is intentional. A missing or inaccessible source is an error, not a request to unpublish it. Remove its configuration entry to unpublish intentionally.
 - Only Update Decks makes automatic commits, limited to generated output and state. If main advances during conversion, retry against its latest revision rather than force-pushing or merging stale output over source changes.
 - Publish only after the updater successfully pushes a complete generated commit, using that exact commit. Keep manual dispatch available on both workflows. A standalone manual Pages run publishes the latest committed output without converting decks.
 - Serialize update-through-deployment with manual publishing so they cannot overlap. A reusable Pages call must not reacquire its caller's lock. Refuse output older than the presentation files already on main.
@@ -27,6 +30,6 @@ This repository publishes selected personal OneDrive PowerPoints at `https://seg
 
 ## Local Checks
 
-Use Node.js 24 or later. Run `npm ci --ignore-scripts` after changing dependencies, then `npm test`. Tests are offline and generate a tiny original PowerPoint outside the repository to exercise the real pinned converter.
+Use Node.js 24 or later. Run `npm ci --ignore-scripts` after changing dependencies, install Playwright's Chromium with `npx playwright install chromium`, then run `npm test`. Tests are offline and generate tiny original fixtures outside the repository to exercise the real converter, browser playback, PDF export, and mocked release operations. Run `npm run verify:converter` for converter changes and forced rebuilds. This runs the upstream Chromium-only checks without modifying the installed dependency.
 
-`npm run update-decks` is the live publishing preparation command. It requires the Actions credentials, may renew the repository secret, and writes generated website files and state. It does not commit or push locally. Do not run it as an offline test.
+`npm run update-decks` is the live publishing preparation command. It requires the Actions credentials, may renew the repository secret, replaces release assets, and writes generated website files and state. It does not commit or push locally. Do not run it as an offline test.

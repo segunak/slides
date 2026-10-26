@@ -8,11 +8,18 @@
   "scripts": {
     "deck-id": "node .github/skills/onedrive-deck-id/scripts/deck-id.mjs",
     "update-decks": "node scripts/update-decks.mjs",
+    "verify:converter": "node scripts/verify-converter.mjs",
     "test": "node --test scripts/*.test.mjs .github/skills/onedrive-deck-id/tests/*.test.mjs"
   },
   "dependencies": {
     "@azure/msal-node": "7.1.1",
+    "esbuild": "0.28.2",
+    "pdfjs-dist": "6.4.299",
+    "playwright": "1.64.1",
     "pptx2html": "https://codeload.github.com/g21589/PPTX2HTML/tar.gz/c8a96ebef4516e9d483c0bc54c61a3245c15aeb4",
     "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "pngjs": "7.0.0"
   }
 }
