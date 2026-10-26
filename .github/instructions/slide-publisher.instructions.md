@@ -15,6 +15,7 @@ This repository publishes selected personal OneDrive PowerPoints at `https://seg
 - Download source PowerPoints only into the runner's temporary directory, outside the checkout. Never commit or publish the original PowerPoints. Do not modify OneDrive sources.
 - Run the pinned PPTX2HTML CLI with its interactive player, separate assets, and strict conversion. Preserve notes, hidden slides, animations, transitions, and the converter's normal functionality.
 - `decks` contains generated HTML, media, a public deck index, and converter attribution. Never hand-edit generated presentations.
+- Keep the HTML index complete and current with every successfully published deck's title and URL. It is the public deck directory.
 - `.github/decks-state.json` only remembers each published deck's name, OneDrive ID, and last published `eTag`. The updater maintains this list to skip unchanged decks. There is no schema version or publisher fingerprint.
 - After changing the converter or publishing code, use Run workflow with **Rebuild all configured decks** to regenerate unchanged source decks.
 - Prepare and validate all changed output before replacing the working publication. A missing or inaccessible source is an error, not a request to unpublish it. Remove its configuration entry to unpublish intentionally.

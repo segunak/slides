@@ -82,7 +82,10 @@ function escapeHtml(value) {
 }
 
 export function renderIndex(decks) {
-    const items = decks.map(deck => `    <li><a href="./${deck.name}/">${escapeHtml(deck.title)}</a></li>`).join('\n');
+    const items = decks.map(deck => {
+        const url = `https://segunakinyemi.com/slides/${deck.name}/`;
+        return `    <li><a href="${url}">${escapeHtml(deck.title)}</a><br><small>${url}</small></li>`;
+    }).join('\n');
     return `<!doctype html>
 <html lang="en">
 <head>
@@ -92,7 +95,7 @@ export function renderIndex(decks) {
   <style>
     body { max-width: 52rem; margin: 3rem auto; padding: 0 1.25rem; font: 1.1rem/1.6 system-ui, sans-serif; color: #222; background: #fff; }
     a { color: #0092ca; text-underline-offset: .15em; } a:hover { color: #f21368; }
-    li { margin: .8rem 0; } footer { margin-top: 3rem; font-size: .85rem; }
+    li { margin: .8rem 0; overflow-wrap: anywhere; } footer { margin-top: 3rem; font-size: .85rem; }
   </style>
 </head>
 <body>
@@ -172,9 +175,12 @@ export async function updateDecks({
     }
     const removed = previous.filter(deck => !config.some(current => current.name === deck.name));
     const next = planned.map(({ name, id, item }) => ({ name, id, eTag: item.eTag }));
+    const index = renderIndex(planned.map(({ name, item }) => ({ name, title: item.name.replace(/\.pptx$/i, '') })));
+    const indexFile = path.join(root, 'decks', 'index.html');
+    const indexChanged = !await exists(indexFile) || await readFile(indexFile, 'utf8') !== index;
     const changedDecks = planned.filter(deck => deck.changed);
     const changed = changedDecks.length > 0 || removed.length > 0 || JSON.stringify(previous) !== JSON.stringify(next) ||
-        !await exists(path.join(root, 'decks', 'index.html'));
+        indexChanged;
     if (!changed) {
         log('No deck changes. No conversion or publication commit is needed.');
         return { changed: false, updated: [], removed: [] };
@@ -203,9 +209,7 @@ export async function updateDecks({
             const html = await readFile(path.join(output, 'index.html'), 'utf8');
             assert.ok(html.includes('id="pp-data"') && html.includes('PPTX2HTML'), `Missing interactive converter output for ${deck.name}.`);
         }
-        await writeFile(path.join(site, 'index.html'), renderIndex(
-            planned.map(({ name, item }) => ({ name, title: item.name.replace(/\.pptx$/i, '') }))
-        ));
+        await writeFile(path.join(site, 'index.html'), index);
         await writeFile(path.join(site, 'pptx2html-license.txt'), await license());
         const bytes = await validatePublicFiles(site);
         await writeFile(path.join(stage, 'state.json'), JSON.stringify(next, null, 2) + '\n');

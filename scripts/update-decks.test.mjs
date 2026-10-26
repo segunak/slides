@@ -102,6 +102,49 @@ test('unchanged decks are a true publication no-op', async t => {
     assert.deepEqual(await readdir(f.temporary), []);
 });
 
+test('the HTML index lists every published deck with a visible full URL and clickable title', () => {
+    const page = renderIndex([
+        { name: 'alpha', title: 'Alpha' },
+        { name: 'how-to-train-your-ai', title: 'How to Train Your AI' }
+    ]);
+    const urls = [...page.matchAll(/<li><a href="([^"]+)">([^<]+)<\/a><br><small>([^<]+)<\/small><\/li>/g)];
+    assert.deepEqual(urls.map(match => match.slice(1)), [
+        ['https://segunakinyemi.com/slides/alpha/', 'Alpha', 'https://segunakinyemi.com/slides/alpha/'],
+        ['https://segunakinyemi.com/slides/how-to-train-your-ai/', 'How to Train Your AI', 'https://segunakinyemi.com/slides/how-to-train-your-ai/']
+    ]);
+    assert.match(renderIndex([]), /No decks have been published yet/);
+    assert.doesNotMatch(renderIndex([]), /<li>/);
+});
+
+for (const condition of ['missing', 'stale']) {
+    test(`repairs a ${condition} HTML index without reconverting unchanged decks`, async t => {
+        const f = await fixture(t, [published('alpha'), published('beta')]);
+        const file = path.join(f.root, 'decks', 'index.html');
+        if (condition === 'missing') await rm(file);
+        else await writeFile(file, '<a href="./removed-deck/">Stale deck</a>');
+        const oldDeck = await snapshot(path.join(f.root, 'decks', 'alpha'));
+        const oldState = await readFile(path.join(f.root, '.github', 'decks-state.json'), 'utf8');
+        assert.deepEqual(await updateDecks(f.options), { changed: true, updated: [], removed: [] });
+        assert.equal(await readFile(file, 'utf8'), renderIndex([
+            { name: 'alpha', title: 'alpha' }, { name: 'beta', title: 'beta' }
+        ]));
+        assert.deepEqual(await snapshot(path.join(f.root, 'decks', 'alpha')), oldDeck);
+        assert.equal(await readFile(path.join(f.root, '.github', 'decks-state.json'), 'utf8'), oldState);
+        assert.ok(!f.calls.some(call => call[0] === 'download' || call[0] === 'convert'));
+        assert.deepEqual(await updateDecks(f.options), { changed: false, updated: [], removed: [] });
+    });
+}
+
+test('refreshes an outdated title in the index even when the file revision is unchanged', async t => {
+    const f = await fixture(t, [published('alpha')]);
+    f.options.drive.getItem = async id => ({ id, name: 'Updated Title.pptx', eTag: 'v1' });
+    assert.deepEqual(await updateDecks(f.options), { changed: true, updated: [], removed: [] });
+    assert.equal(await readFile(path.join(f.root, 'decks', 'index.html'), 'utf8'),
+        renderIndex([{ name: 'alpha', title: 'Updated Title' }]));
+    assert.ok(!f.calls.some(call => call[0] === 'download' || call[0] === 'convert'));
+    assert.deepEqual(await updateDecks(f.options), { changed: false, updated: [], removed: [] });
+});
+
 test('converts new and edited decks only, retaining untouched output byte-for-byte', async t => {
     const f = await fixture(t, [published('alpha'), published('beta')], [['alpha', 'alpha'], ['beta', 'beta'], ['gamma', 'gamma']]);
     const oldBeta = await snapshot(path.join(f.root, 'decks', 'beta'));
@@ -113,6 +156,9 @@ test('converts new and edited decks only, retaining untouched output byte-for-by
     assert.deepEqual(readState(await readFile(path.join(f.root, '.github', 'decks-state.json'), 'utf8')), [
         published('alpha', 'alpha', 'v2'), published('beta'), published('gamma')
     ]);
+    assert.equal(await readFile(path.join(f.root, 'decks', 'index.html'), 'utf8'), renderIndex([
+        { name: 'alpha', title: 'alpha' }, { name: 'beta', title: 'beta' }, { name: 'gamma', title: 'gamma' }
+    ]));
     assert.deepEqual(await readdir(f.temporary), []);
     assert.ok(!(await readdir(f.root)).some(name => name.startsWith('.decks-stage-')));
     await validatePublicFiles(path.join(f.root, 'decks'));
@@ -122,7 +168,9 @@ test('rebuilds a renamed URL or changed source ID, without retaining the old URL
     const f = await fixture(t, [published('old-name', 'original')], [['new-name', 'replacement']]);
     assert.deepEqual(await updateDecks(f.options), { changed: true, updated: ['new-name'], removed: ['old-name'] });
     await assert.rejects(access(path.join(f.root, 'decks', 'old-name')));
-    assert.match(await readFile(path.join(f.root, 'decks', 'index.html'), 'utf8'), /\.\/new-name\//);
+    const page = await readFile(path.join(f.root, 'decks', 'index.html'), 'utf8');
+    assert.equal(page, renderIndex([{ name: 'new-name', title: 'replacement' }]));
+    assert.doesNotMatch(page, /old-name/);
 });
 
 test('a replacement source under the same URL rebuilds even if its eTag matches', async t => {
@@ -139,6 +187,7 @@ test('removing entries removes generated directories without downloading any sou
     assert.deepEqual(await updateDecks(f.options), { changed: true, updated: [], removed: ['alpha'] });
     assert.ok(!f.calls.some(call => call[0] === 'download'));
     assert.deepEqual(readState(await readFile(path.join(f.root, '.github', 'decks-state.json'), 'utf8')), []);
+    assert.equal(await readFile(path.join(f.root, 'decks', 'index.html'), 'utf8'), renderIndex([]));
     await assert.rejects(access(path.join(f.root, 'decks', 'alpha')));
 });
 
@@ -153,7 +202,8 @@ for (const change of ['force', 'missing-output']) {
 
 for (const failure of ['metadata', 'download', 'conversion', 'invalid-output', 'source-in-output']) {
     test(`${failure} failure leaves all previously published output and state untouched`, async t => {
-        const f = await fixture(t, [published('alpha'), published('beta')]);
+        const f = await fixture(t, [published('alpha'), published('beta')],
+            [['alpha', 'alpha'], ['beta', 'beta'], ['gamma', 'gamma']]);
         f.options.force = true;
         const before = await snapshot(f.root);
         if (failure === 'metadata') f.options.drive.getItem = async () => { throw new Error('Metadata HTTP 404'); };
@@ -188,9 +238,9 @@ test('refuses to put temporary original decks anywhere inside the repository', a
     await assert.rejects(updateDecks(f.options), /outside the repository/);
 });
 
-test('generated index uses relative deck URLs and escapes original titles', () => {
+test('generated index escapes original titles', () => {
     const page = renderIndex([{ name: 'alpha', title: '<Deck> & "Notes"' }]);
-    assert.match(page, /href="\.\/alpha\/"/);
+    assert.match(page, /href="https:\/\/segunakinyemi\.com\/slides\/alpha\/"/);
     assert.match(page, /&lt;Deck&gt; &amp; &quot;Notes&quot;/);
     assert.doesNotMatch(page, /<Deck>/);
 });
@@ -298,6 +348,8 @@ test('real conversion runs through the complete updater without retaining its Po
     assert.match(page, /Local converter check/);
     assert.match(page, /assets\/image1\.gif/);
     const publication = await snapshot(path.join(f.root, 'decks'));
+    assert.equal(publication['index.html'], renderIndex([{ name: 'alpha', title: 'alpha' }]));
+    assert.equal(publication['slides.txt'], undefined);
     assert.doesNotMatch(JSON.stringify(publication), /source\.pptx|temporary pptx|access_token|refresh_token/);
     assert.deepEqual(await readdir(f.temporary), []);
     assert.deepEqual(await updateDecks(f.options), { changed: false, updated: [], removed: [] });
