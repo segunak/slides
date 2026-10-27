@@ -116,9 +116,10 @@ export function renderIndex(decks) {
     header a { display: inline-flex; align-items: center; min-height: 44px; }
     .site-name { color: #1b2533; font-weight: 700; text-decoration: none; }
     main { padding: clamp(2rem, 5vw, 4rem) 0; }
-    .heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem 1rem; margin-bottom: 2rem; }
+    .heading { margin-bottom: 2rem; }
     h1 { margin: 0; font-size: clamp(2.5rem, 6vw, 3.75rem); line-height: 1.15; letter-spacing: -.04em; }
-    .count { margin: 0; color: #596573; font-size: .9rem; }
+    .intro { margin: .75rem 0 0; color: #596573; font-size: 1.05rem; }
+    .intro a { font-weight: 600; }
     .deck-list { display: grid; gap: 1rem; margin: 0; padding: 0; list-style: none; }
     .deck { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem 2rem; padding: 1.5rem; border: 1px solid #dce3e9; border-radius: 12px; background: #fff; }
     .deck-info { min-width: 0; }
@@ -148,7 +149,10 @@ export function renderIndex(decks) {
   <div class="page">
   <header><a class="site-name" href="https://segunakinyemi.com/">Segun Akinyemi</a><a href="https://segunakinyemi.com/speaking/">Speaking</a></header>
   <main>
-  <div class="heading"><h1>Slides</h1><p class="count">${decks.length} ${decks.length === 1 ? 'deck' : 'decks'}</p></div>
+  <div class="heading">
+    <h1>Slides</h1>
+    <p class="intro">Slide decks by <a href="https://segunakinyemi.com/about/">Segun Akinyemi</a>. Check out my <a href="https://segunakinyemi.com/speaking/">Speaking page</a>.</p>
+  </div>
 ${decks.length ? `  <ul class="deck-list" role="list">\n${items}\n  </ul>` : '  <p class="empty">No decks have been published yet.</p>'}
   </main>
   <footer><a href="https://github.com/g21589/PPTX2HTML">PPTX2HTML</a> &middot; <a href="./pptx2html-license.txt">MIT License</a></footer>

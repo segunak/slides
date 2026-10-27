@@ -155,6 +155,12 @@ test('the HTML index is readable and keyboard accessible on desktop, mobile, and
     await page.setContent(renderIndex(decks));
     assert.equal(await page.getByRole('main').count(), 1);
     assert.equal(await page.getByRole('heading', { level: 1 }).textContent(), 'Slides');
+    assert.equal(await page.locator('.intro').textContent(), 'Slide decks by Segun Akinyemi. Check out my Speaking page.');
+    assert.equal(await page.locator('.intro').getByRole('link', { name: 'Segun Akinyemi', exact: true }).getAttribute('href'),
+        'https://segunakinyemi.com/about/');
+    assert.equal(await page.locator('.intro').getByRole('link', { name: 'Speaking page', exact: true }).getAttribute('href'),
+        'https://segunakinyemi.com/speaking/');
+    assert.equal(await page.locator('.count').count(), 0);
     assert.deepEqual(await page.getByRole('heading', { level: 2 }).allTextContents(), decks.map(deck => deck.title));
     assert.equal(await page.getByRole('link', { name: 'Download PDF', exact: true }).count(), decks.length);
     assert.equal(await page.getByRole('link', { name: 'Download PowerPoint', exact: true }).count(), decks.length);
@@ -174,6 +180,10 @@ test('the HTML index is readable and keyboard accessible on desktop, mobile, and
             await page.locator('html').evaluate((e, size) => { e.style.fontSize = size; }, fontSize);
             assert.ok(await page.locator('html').evaluate(e => e.scrollWidth <= innerWidth),
                 `Index must not scroll horizontally at ${width}px and ${fontSize} text.`);
+            const heading = await page.getByRole('heading', { level: 1 }).boundingBox();
+            const intro = await page.locator('.intro').boundingBox();
+            assert.ok(heading && intro && intro.y >= heading.y + heading.height,
+                'The linked introduction must stay below the Slides heading.');
             for (const link of await page.locator('.downloads a').all()) {
                 const box = await link.boundingBox();
                 assert.ok(box && box.height >= 44 && box.x >= 0 && box.x + box.width <= width,
