@@ -88,7 +88,10 @@ function escapeHtml(value) {
 export function renderIndex(decks) {
     const items = decks.map(deck => {
         const url = `https://segunakinyemi.com/slides/${deck.name}/`;
-        return `    <li><a href="${url}">${escapeHtml(deck.title)}</a><br><small>${url}</small><br>${downloadLinks(deck.name)}</li>`;
+        return `    <li class="deck">
+      <div class="deck-info"><h2><a href="${url}">${escapeHtml(deck.title)}</a></h2><p class="deck-url">${url}</p></div>
+      <div class="downloads">${downloadLinks(deck.name)}</div>
+    </li>`;
     }).join('\n');
     return `<!doctype html>
 <html lang="en">
@@ -97,16 +100,47 @@ export function renderIndex(decks) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Slides | Segun Akinyemi</title>
   <style>
-    body { max-width: 52rem; margin: 3rem auto; padding: 0 1.25rem; font: 1.1rem/1.6 system-ui, sans-serif; color: #222; background: #fff; }
-    a { color: #0092ca; text-underline-offset: .15em; } a:hover { color: #f21368; }
-    li { margin: .8rem 0; overflow-wrap: anywhere; } footer { margin-top: 3rem; font-size: .85rem; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 1rem/1.6 system-ui, sans-serif; color: #1b2533; background: #f6f8fa; }
+    body::before { content: ""; display: block; height: 3px; background: linear-gradient(90deg, #0092ca, #f21368); }
+    .page { width: min(100% - 2rem, 68rem); margin: 0 auto; }
+    a { color: #006f9b; text-underline-offset: .2em; }
+    a:hover { color: #b40e4e; }
+    a:focus-visible { outline: 3px solid #006f9b; outline-offset: 4px; border-radius: 3px; }
+    header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; padding: 1.25rem 0; border-bottom: 1px solid #dce3e9; }
+    header a { display: inline-flex; align-items: center; min-height: 44px; }
+    .site-name { color: #1b2533; font-weight: 700; text-decoration: none; }
+    main { padding: clamp(2rem, 5vw, 4rem) 0; }
+    .heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem 1rem; margin-bottom: 2rem; }
+    h1 { margin: 0; font-size: clamp(2.5rem, 6vw, 3.75rem); line-height: 1.15; letter-spacing: -.04em; }
+    .count { margin: 0; color: #596573; font-size: .9rem; }
+    .deck-list { display: grid; gap: 1rem; margin: 0; padding: 0; list-style: none; }
+    .deck { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem 2rem; padding: 1.5rem; border: 1px solid #dce3e9; border-radius: 12px; background: #fff; }
+    .deck-info { min-width: 0; }
+    h2 { margin: 0; font-size: 1.1rem; line-height: 1.5; font-weight: 650; overflow-wrap: anywhere; }
+    h2 a { color: #1b2533; text-decoration: none; }
+    h2 a:hover { text-decoration: underline; }
+    .deck-url { margin: .5rem 0 0; color: #596573; font-size: .8rem; overflow-wrap: anywhere; }
+    .downloads { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .downloads a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; max-width: 100%; padding: .65rem .85rem; border: 1px solid #b8cbd7; border-radius: 7px; font-size: .85rem; font-weight: 600; line-height: 1.35; text-align: center; text-decoration: none; }
+    .downloads a:first-child { color: #fff; background: #006f9b; border-color: #006f9b; }
+    .downloads a:hover { color: #fff; background: #005675; border-color: #005675; }
+    .empty { padding: 2rem; border: 1px dashed #b8cbd7; border-radius: 12px; background: #fff; }
+    footer { padding: 1.5rem 0 2rem; border-top: 1px solid #dce3e9; color: #596573; font-size: .85rem; }
+    @media (max-width: 60rem) {
+      .deck { grid-template-columns: minmax(0, 1fr); padding: 1.25rem; }
+    }
   </style>
 </head>
 <body>
-  <h1>Slides</h1>
-  <p><a href="https://segunakinyemi.com/speaking/">Speaking</a></p>
-${decks.length ? `  <ul>\n${items}\n  </ul>` : '  <p>No decks have been published yet.</p>'}
+  <div class="page">
+  <header><a class="site-name" href="https://segunakinyemi.com/">Segun Akinyemi</a><a href="https://segunakinyemi.com/speaking/">Speaking</a></header>
+  <main>
+  <div class="heading"><h1>Slides</h1><p class="count">${decks.length} ${decks.length === 1 ? 'deck' : 'decks'}</p></div>
+${decks.length ? `  <ul class="deck-list" role="list">\n${items}\n  </ul>` : '  <p class="empty">No decks have been published yet.</p>'}
+  </main>
   <footer><a href="https://github.com/g21589/PPTX2HTML">PPTX2HTML</a> &middot; <a href="./pptx2html-license.txt">MIT License</a></footer>
+  </div>
 </body>
 </html>
 `;

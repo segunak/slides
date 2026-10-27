@@ -5,25 +5,83 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Slides | Segun Akinyemi</title>
   <style>
-    body { max-width: 52rem; margin: 3rem auto; padding: 0 1.25rem; font: 1.1rem/1.6 system-ui, sans-serif; color: #222; background: #fff; }
-    a { color: #0092ca; text-underline-offset: .15em; } a:hover { color: #f21368; }
-    li { margin: .8rem 0; overflow-wrap: anywhere; } footer { margin-top: 3rem; font-size: .85rem; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 1rem/1.6 system-ui, sans-serif; color: #1b2533; background: #f6f8fa; }
+    body::before { content: ""; display: block; height: 3px; background: linear-gradient(90deg, #0092ca, #f21368); }
+    .page { width: min(100% - 2rem, 68rem); margin: 0 auto; }
+    a { color: #006f9b; text-underline-offset: .2em; }
+    a:hover { color: #b40e4e; }
+    a:focus-visible { outline: 3px solid #006f9b; outline-offset: 4px; border-radius: 3px; }
+    header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; padding: 1.25rem 0; border-bottom: 1px solid #dce3e9; }
+    header a { display: inline-flex; align-items: center; min-height: 44px; }
+    .site-name { color: #1b2533; font-weight: 700; text-decoration: none; }
+    main { padding: clamp(2rem, 5vw, 4rem) 0; }
+    .heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem 1rem; margin-bottom: 2rem; }
+    h1 { margin: 0; font-size: clamp(2.5rem, 6vw, 3.75rem); line-height: 1.15; letter-spacing: -.04em; }
+    .count { margin: 0; color: #596573; font-size: .9rem; }
+    .deck-list { display: grid; gap: 1rem; margin: 0; padding: 0; list-style: none; }
+    .deck { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem 2rem; padding: 1.5rem; border: 1px solid #dce3e9; border-radius: 12px; background: #fff; }
+    .deck-info { min-width: 0; }
+    h2 { margin: 0; font-size: 1.1rem; line-height: 1.5; font-weight: 650; overflow-wrap: anywhere; }
+    h2 a { color: #1b2533; text-decoration: none; }
+    h2 a:hover { text-decoration: underline; }
+    .deck-url { margin: .5rem 0 0; color: #596573; font-size: .8rem; overflow-wrap: anywhere; }
+    .downloads { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .downloads a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; max-width: 100%; padding: .65rem .85rem; border: 1px solid #b8cbd7; border-radius: 7px; font-size: .85rem; font-weight: 600; line-height: 1.35; text-align: center; text-decoration: none; }
+    .downloads a:first-child { color: #fff; background: #006f9b; border-color: #006f9b; }
+    .downloads a:hover { color: #fff; background: #005675; border-color: #005675; }
+    .empty { padding: 2rem; border: 1px dashed #b8cbd7; border-radius: 12px; background: #fff; }
+    footer { padding: 1.5rem 0 2rem; border-top: 1px solid #dce3e9; color: #596573; font-size: .85rem; }
+    @media (max-width: 60rem) {
+      .deck { grid-template-columns: minmax(0, 1fr); padding: 1.25rem; }
+    }
   </style>
 </head>
 <body>
-  <h1>Slides</h1>
-  <p><a href="https://segunakinyemi.com/speaking/">Speaking</a></p>
-  <ul>
-    <li><a href="https://segunakinyemi.com/slides/context-engineering-is-software-engineering/">Context Engineering Is Software Engineering</a><br><small>https://segunakinyemi.com/slides/context-engineering-is-software-engineering/</small><br><a href="https://github.com/segunak/slides/releases/download/downloads/context-engineering-is-software-engineering.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/context-engineering-is-software-engineering.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></li>
-    <li><a href="https://segunakinyemi.com/slides/agentic-ai-technical-audience/">[Technical Audiences - Guess What the Agent Did Game] - Agentic AI - From Acronyms to Application</a><br><small>https://segunakinyemi.com/slides/agentic-ai-technical-audience/</small><br><a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-technical-audience.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-technical-audience.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></li>
-    <li><a href="https://segunakinyemi.com/slides/agentic-ai-general-audience/">[General Audiences - Guess What the Agent Did Game] - Agentic AI - From Acronyms to Application</a><br><small>https://segunakinyemi.com/slides/agentic-ai-general-audience/</small><br><a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-general-audience.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-general-audience.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></li>
-    <li><a href="https://segunakinyemi.com/slides/agentic-ai-hands-on-workshop/">[VS Code Activity] - Agentic AI - From Acronyms to Applications</a><br><small>https://segunakinyemi.com/slides/agentic-ai-hands-on-workshop/</small><br><a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-hands-on-workshop.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-hands-on-workshop.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></li>
-    <li><a href="https://segunakinyemi.com/slides/how-to-train-your-ai-language-activity/">[Language Activity] - How To Train Your AI - Demystifying ChatGPT With the Basics</a><br><small>https://segunakinyemi.com/slides/how-to-train-your-ai-language-activity/</small><br><a href="https://github.com/segunak/slides/releases/download/downloads/how-to-train-your-ai-language-activity.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/how-to-train-your-ai-language-activity.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></li>
-    <li><a href="https://segunakinyemi.com/slides/how-to-train-your-ai-coding-activity/">[Coding Activity] - How To Train Your AI - Demystifying ChatGPT With the Basics</a><br><small>https://segunakinyemi.com/slides/how-to-train-your-ai-coding-activity/</small><br><a href="https://github.com/segunak/slides/releases/download/downloads/how-to-train-your-ai-coding-activity.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/how-to-train-your-ai-coding-activity.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></li>
-    <li><a href="https://segunakinyemi.com/slides/ai-technical-interview-workshop/">Times Are Changing - The Rise of AI-Assisted Coding Interviews</a><br><small>https://segunakinyemi.com/slides/ai-technical-interview-workshop/</small><br><a href="https://github.com/segunak/slides/releases/download/downloads/ai-technical-interview-workshop.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/ai-technical-interview-workshop.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></li>
-    <li><a href="https://segunakinyemi.com/slides/were-not-cooked/">[AI Engineering Focus] - Your Tech Career Survial Guide in the Age of AI</a><br><small>https://segunakinyemi.com/slides/were-not-cooked/</small><br><a href="https://github.com/segunak/slides/releases/download/downloads/were-not-cooked.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/were-not-cooked.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></li>
-    <li><a href="https://segunakinyemi.com/slides/precision-meets-creativity-with-microsoft-designer/">Precision Meets Creativity with Microsoft Designer</a><br><small>https://segunakinyemi.com/slides/precision-meets-creativity-with-microsoft-designer/</small><br><a href="https://github.com/segunak/slides/releases/download/downloads/precision-meets-creativity-with-microsoft-designer.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/precision-meets-creativity-with-microsoft-designer.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></li>
+  <div class="page">
+  <header><a class="site-name" href="https://segunakinyemi.com/">Segun Akinyemi</a><a href="https://segunakinyemi.com/speaking/">Speaking</a></header>
+  <main>
+  <div class="heading"><h1>Slides</h1><p class="count">9 decks</p></div>
+  <ul class="deck-list" role="list">
+    <li class="deck">
+      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/context-engineering-is-software-engineering/">Context Engineering Is Software Engineering</a></h2><p class="deck-url">https://segunakinyemi.com/slides/context-engineering-is-software-engineering/</p></div>
+      <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/context-engineering-is-software-engineering.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/context-engineering-is-software-engineering.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
+    </li>
+    <li class="deck">
+      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/agentic-ai-technical-audience/">[Technical Audiences - Guess What the Agent Did Game] - Agentic AI - From Acronyms to Application</a></h2><p class="deck-url">https://segunakinyemi.com/slides/agentic-ai-technical-audience/</p></div>
+      <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-technical-audience.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-technical-audience.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
+    </li>
+    <li class="deck">
+      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/agentic-ai-general-audience/">[General Audiences - Guess What the Agent Did Game] - Agentic AI - From Acronyms to Application</a></h2><p class="deck-url">https://segunakinyemi.com/slides/agentic-ai-general-audience/</p></div>
+      <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-general-audience.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-general-audience.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
+    </li>
+    <li class="deck">
+      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/agentic-ai-hands-on-workshop/">[VS Code Activity] - Agentic AI - From Acronyms to Applications</a></h2><p class="deck-url">https://segunakinyemi.com/slides/agentic-ai-hands-on-workshop/</p></div>
+      <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-hands-on-workshop.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-hands-on-workshop.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
+    </li>
+    <li class="deck">
+      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/how-to-train-your-ai-language-activity/">[Language Activity] - How To Train Your AI - Demystifying ChatGPT With the Basics</a></h2><p class="deck-url">https://segunakinyemi.com/slides/how-to-train-your-ai-language-activity/</p></div>
+      <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/how-to-train-your-ai-language-activity.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/how-to-train-your-ai-language-activity.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
+    </li>
+    <li class="deck">
+      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/how-to-train-your-ai-coding-activity/">[Coding Activity] - How To Train Your AI - Demystifying ChatGPT With the Basics</a></h2><p class="deck-url">https://segunakinyemi.com/slides/how-to-train-your-ai-coding-activity/</p></div>
+      <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/how-to-train-your-ai-coding-activity.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/how-to-train-your-ai-coding-activity.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
+    </li>
+    <li class="deck">
+      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/ai-technical-interview-workshop/">Times Are Changing - The Rise of AI-Assisted Coding Interviews</a></h2><p class="deck-url">https://segunakinyemi.com/slides/ai-technical-interview-workshop/</p></div>
+      <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/ai-technical-interview-workshop.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/ai-technical-interview-workshop.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
+    </li>
+    <li class="deck">
+      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/were-not-cooked/">[AI Engineering Focus] - Your Tech Career Survial Guide in the Age of AI</a></h2><p class="deck-url">https://segunakinyemi.com/slides/were-not-cooked/</p></div>
+      <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/were-not-cooked.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/were-not-cooked.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
+    </li>
+    <li class="deck">
+      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/precision-meets-creativity-with-microsoft-designer/">Precision Meets Creativity with Microsoft Designer</a></h2><p class="deck-url">https://segunakinyemi.com/slides/precision-meets-creativity-with-microsoft-designer/</p></div>
+      <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/precision-meets-creativity-with-microsoft-designer.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/precision-meets-creativity-with-microsoft-designer.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
+    </li>
   </ul>
+  </main>
   <footer><a href="https://github.com/g21589/PPTX2HTML">PPTX2HTML</a> &middot; <a href="./pptx2html-license.txt">MIT License</a></footer>
+  </div>
 </body>
 </html>

@@ -4,6 +4,7 @@ import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:f
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { chromium } from 'playwright';
 import { convertDeck, readConfig, readState, renderIndex, updateDecks, validatePublicFiles, MAX_FILE_BYTES, MAX_SITE_BYTES } from './update-decks.mjs';
 import { addDownloadControls } from './downloads.mjs';
 import { verifyAndExport } from './presentation-browser.mjs';
@@ -129,13 +130,49 @@ test('the HTML index lists every published deck with a visible full URL and clic
         { name: 'alpha', title: 'Alpha' },
         { name: 'how-to-train-your-ai', title: 'How to Train Your AI' }
     ]);
-    const urls = [...page.matchAll(/<li><a href="([^"]+)">([^<]+)<\/a><br><small>([^<]+)<\/small>/g)];
+    const urls = [...page.matchAll(/<h2><a href="([^"]+)">([^<]+)<\/a><\/h2><p class="deck-url">([^<]+)<\/p>/g)];
     assert.deepEqual(urls.map(match => match.slice(1)), [
         ['https://segunakinyemi.com/slides/alpha/', 'Alpha', 'https://segunakinyemi.com/slides/alpha/'],
         ['https://segunakinyemi.com/slides/how-to-train-your-ai/', 'How to Train Your AI', 'https://segunakinyemi.com/slides/how-to-train-your-ai/']
     ]);
     assert.match(renderIndex([]), /No decks have been published yet/);
     assert.doesNotMatch(renderIndex([]), /<li>/);
+});
+
+test('the HTML index is readable and keyboard accessible on desktop, mobile, and enlarged text without scripts', async t => {
+    const browser = await chromium.launch();
+    t.after(() => browser.close());
+    const page = await browser.newPage({ javaScriptEnabled: false });
+    const decks = [
+        { name: 'context-engineering-is-software-engineering', title: 'Context Engineering Is Software Engineering' },
+        { name: 'agentic-ai-technical-audience', title: '[Technical Audiences - Guess What the Agent Did Game] - Agentic AI - From Acronyms to Application' }
+    ];
+    await page.setContent(renderIndex(decks));
+    assert.equal(await page.getByRole('main').count(), 1);
+    assert.equal(await page.getByRole('heading', { level: 1 }).textContent(), 'Slides');
+    assert.deepEqual(await page.getByRole('heading', { level: 2 }).allTextContents(), decks.map(deck => deck.title));
+    assert.equal(await page.getByRole('link', { name: 'Download PDF', exact: true }).count(), decks.length);
+    assert.equal(await page.getByRole('link', { name: 'Download PowerPoint', exact: true }).count(), decks.length);
+    await page.keyboard.press('Tab');
+    assert.equal(await page.locator(':focus').textContent(), 'Segun Akinyemi');
+    assert.equal(await page.locator(':focus').evaluate(e => getComputedStyle(e).outlineStyle), 'solid');
+    for (const width of [320, 390, 768, 1280]) {
+        await page.setViewportSize({ width, height: 900 });
+        for (const fontSize of ['100%', '200%']) {
+            await page.locator('html').evaluate((e, size) => { e.style.fontSize = size; }, fontSize);
+            assert.ok(await page.locator('html').evaluate(e => e.scrollWidth <= innerWidth),
+                `Index must not scroll horizontally at ${width}px and ${fontSize} text.`);
+            for (const link of await page.locator('.downloads a').all()) {
+                const box = await link.boundingBox();
+                assert.ok(box && box.height >= 44 && box.x >= 0 && box.x + box.width <= width,
+                    'Download buttons must remain usable and inside the viewport.');
+            }
+        }
+    }
+    await page.setContent(renderIndex([]));
+    assert.equal(await page.getByRole('heading', { level: 1 }).count(), 1);
+    assert.equal(await page.getByRole('listitem').count(), 0);
+    assert.match(await page.getByRole('main').textContent(), /No decks have been published yet/);
 });
 
 for (const condition of ['missing', 'stale']) {
