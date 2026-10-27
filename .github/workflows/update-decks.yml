@@ -12,17 +12,20 @@ on:
   push:
     branches: [main]
     paths-ignore:
+      - "**/*.md"
+      - docs/**
+      - LICENSE
+      - .gitignore
       - decks/**
       - .github/decks-state.json
   pull_request:
-    paths:
-      - decks.yml
-      - package.json
-      - package-lock.json
-      - scripts/**
-      - .github/skills/onedrive-deck-id/**
-      - .github/workflows/update-decks.yml
-      - .github/workflows/publish-pages.yml
+    paths-ignore:
+      - "**/*.md"
+      - docs/**
+      - LICENSE
+      - .gitignore
+      - decks/**
+      - .github/decks-state.json
 
 permissions:
   contents: read
@@ -86,7 +89,9 @@ jobs:
 
   publish:
     needs: update
-    if: needs.update.outputs.changed == 'true'
+    if: >-
+      needs.update.result == 'success' &&
+      (needs.update.outputs.changed == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     permissions:
       contents: read
       pages: write

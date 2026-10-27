@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { posix } from 'node:path';
 import { test } from 'node:test';
+import { runInNewContext } from 'node:vm';
 import { parseDocument } from 'yaml';
 import { readConfig, readState } from './update-decks.mjs';
 
@@ -16,21 +18,42 @@ test('repository deck configuration and last-published list are readable', async
     readState(await readFile(new URL('.github/decks-state.json', root), 'utf8'));
 });
 
-test('updater supports scheduled/manual runs and ignores only its generated commits', async () => {
+test('updater supports scheduled/manual runs and excludes documentation and generated-only changes', async () => {
     const update = await workflow('update-decks');
     assert.equal(update.on.schedule[0].cron, '17 */6 * * *');
     assert.equal(update.on.workflow_dispatch.inputs.force.type, 'boolean');
     assert.equal(update.on.workflow_dispatch.inputs.force.default, false);
     assert.deepEqual(update.on.push.branches, ['main']);
-    assert.deepEqual(update.on.push['paths-ignore'], ['decks/**', '.github/decks-state.json']);
     assert.equal(update.on.push.paths, undefined);
+    assert.equal(update.on.pull_request.paths, undefined);
+    assert.deepEqual(update.on.push['paths-ignore'], update.on.pull_request['paths-ignore']);
+    const triggers = files => files.some(file =>
+        !update.on.push['paths-ignore'].some(pattern =>
+            // GitHub's recursive Markdown pattern also matches files inside dot-directories.
+            pattern === '**/*.md' ? file.endsWith('.md') : posix.matchesGlob(file, pattern)));
+    for (const file of [
+        'decks.yml', 'package.json', 'package-lock.json',
+        'scripts/update-decks.mjs', 'scripts/sync-decks.test.mjs', 'scripts/nested/helper.mjs',
+        '.github/skills/onedrive-deck-id/scripts/deck-id.mjs',
+        '.github/skills/onedrive-deck-id/tests/deck-id.test.mjs',
+        '.github/workflows/update-decks.yml', '.github/workflows/publish-pages.yml',
+        '.github/workflows/unrelated.yml', 'src/new-module.js', 'future-code/helper.js'
+    ]) assert.ok(triggers([file]), `Code or configuration must trigger synchronization: ${file}`);
+    for (const file of [
+        'README.md', 'LICENSE', '.gitignore', 'docs/notes.md',
+        '.github/copilot-instructions.md', '.github/instructions/slide-publisher.instructions.md',
+        '.github/skills/onedrive-deck-id/SKILL.md',
+        'decks/index.html', 'decks/example/assets/image.png', '.github/decks-state.json'
+    ]) assert.ok(!triggers([file]), `Documentation or generated-only changes must not trigger synchronization: ${file}`);
+    assert.ok(!triggers(['README.md', 'docs/guide.html', 'decks/index.html', '.github/decks-state.json']));
+    assert.ok(triggers(['README.md', 'scripts/update-decks.mjs']));
+    assert.ok(triggers(['decks/index.html', 'future-code/helper.js']));
     assert.equal(update.concurrency['cancel-in-progress'], false);
 });
 
 test('pull requests only run offline tests; live credentials and app permissions stay in the main-branch job', async () => {
     const update = await workflow('update-decks');
     assert.ok(update.on.pull_request);
-    assert.ok(update.on.pull_request.paths.includes('.github/skills/onedrive-deck-id/**'));
     assert.match(update.jobs.update.if, /github\.event_name != 'pull_request'/);
     assert.match(update.jobs.update.if, /refs\/heads\/main/);
     assert.equal(update.jobs.test.if, "github.event_name == 'pull_request'");
@@ -67,10 +90,21 @@ test('pull requests install Chromium and run browser/PDF regressions and upstrea
     ]);
 });
 
-test('publication depends on a changed, successfully pushed update and passes its exact SHA', async () => {
+test('publication requires successful synchronization and publishes code pushes/manual updates even without generated changes', async () => {
     const update = await workflow('update-decks');
     assert.equal(update.jobs.publish.needs, 'update');
-    assert.equal(update.jobs.publish.if, "needs.update.outputs.changed == 'true'");
+    for (const result of ['success', 'failure', 'cancelled', 'skipped']) {
+        for (const event of ['push', 'workflow_dispatch', 'schedule']) {
+            for (const changed of ['true', 'false', '']) {
+                const actual = runInNewContext(update.jobs.publish.if, {
+                    needs: { update: { result, outputs: { changed } } },
+                    github: { event_name: event }
+                });
+                const expected = result === 'success' && (changed === 'true' || event === 'push' || event === 'workflow_dispatch');
+                assert.equal(actual, expected, `Unexpected publication decision: ${result}, ${event}, changed=${changed}`);
+            }
+        }
+    }
     assert.equal(update.jobs.publish.uses, './.github/workflows/publish-pages.yml');
     assert.equal(update.jobs.publish.with.commit, '${{ needs.update.outputs.sha }}');
     assert.deepEqual(update.jobs.publish.permissions, { contents: 'read', pages: 'write', 'id-token': 'write' });

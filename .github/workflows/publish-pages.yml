@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       commit:
-        description: Exact generated commit successfully pushed by Update Decks
+        description: Exact synchronized commit confirmed on main by Update Decks
         type: string
         required: true
   workflow_dispatch:

@@ -92,7 +92,7 @@ test('commits only generated output after checking out, installing, testing, and
     assert.doesNotMatch(commands.join('\n'), /--force|reset|restore|rebase|git pull/);
 });
 
-test('unchanged output returns no-publication without committing or pushing', () => {
+test('unchanged output returns the confirmed main SHA without committing or pushing', () => {
     const f = fixture({ changes: [false] });
     assert.deepEqual(syncDecks(f.options), { changed: false, sha: first });
     assert.ok(!f.calls.some(call => ['commit', 'push'].includes(call.args[0])));
