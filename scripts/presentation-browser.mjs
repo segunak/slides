@@ -72,6 +72,52 @@ async function checkState(page, slide, step, timing, metrics, width, height) {
     }, { slide, states: [...expected.states] });
 }
 
+export async function verifyMedia(page) {
+    const sources = new Set();
+    for (const element of await page.locator('video[src], audio[src]').all()) {
+        const source = await element.evaluate(media => media.currentSrc || media.src);
+        if (sources.has(source)) continue;
+        sources.add(source);
+        await element.evaluate(async media => {
+            const original = { muted: media.muted, time: media.currentTime };
+            const fail = message => new Error(`Media ${media.currentSrc || media.src}: ${message}`);
+            const waitFor = (event, action, ready = () => true) => new Promise((resolve, reject) => {
+                const done = error => {
+                    clearTimeout(timer);
+                    media.removeEventListener(event, onEvent);
+                    media.removeEventListener('error', onError);
+                    if (error) reject(error); else resolve();
+                };
+                const onEvent = () => { if (ready()) done(); };
+                const onError = () => done(fail(media.error?.message || 'could not decode or load'));
+                const timer = setTimeout(() => done(fail(`timed out waiting for ${event}`)), 15_000);
+                media.addEventListener(event, onEvent);
+                media.addEventListener('error', onError);
+                Promise.resolve().then(action).catch(error => done(fail(error.message)));
+            });
+            try {
+                if (media.error) throw fail(media.error.message);
+                if (media.readyState < 1) await waitFor('loadedmetadata', () => { media.preload = 'auto'; media.load(); });
+                if (!(Number.isFinite(media.duration) && media.duration > 0)) throw fail('missing finite duration');
+                if (media.tagName === 'VIDEO' && !(media.videoWidth > 0 && media.videoHeight > 0)) throw fail('missing video frames');
+                media.muted = true;
+                if (media.ended) media.currentTime = 0;
+                const start = media.currentTime;
+                await waitFor('timeupdate', () => media.play(), () => media.currentTime > start);
+                media.pause();
+                const target = media.duration / 2;
+                await waitFor('seeked', () => { media.currentTime = target; },
+                    () => !media.seeking && Math.abs(media.currentTime - target) < 0.25);
+            } finally {
+                media.pause();
+                media.currentTime = original.time;
+                media.muted = original.muted;
+            }
+        });
+    }
+    return sources.size;
+}
+
 export async function verifyAndExport(directory, pdf, { log = console.log, fontRequest = fetch } = {}) {
     const browser = await chromium.launch();
     try {
@@ -83,7 +129,12 @@ export async function verifyAndExport(directory, pdf, { log = console.log, fontR
         const seenFonts = new Set();
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
-        page.on('requestfailed', request => errors.push(`Asset load failed: ${request.url()}`));
+        page.on('requestfailed', request => {
+            const failure = request.failure()?.errorText;
+            // Metadata/range loading can cancel a media request even when decoding and playback succeed.
+            if (request.resourceType() === 'media' && failure === 'net::ERR_ABORTED') return;
+            errors.push(`Asset load failed: ${request.url()} (${failure})`);
+        });
         await page.addInitScript(() => {
             document.addEventListener('DOMContentLoaded', async () => {
                 if (window.pptxFontsReady) await window.pptxFontsReady;
@@ -110,6 +161,8 @@ export async function verifyAndExport(directory, pdf, { log = console.log, fontR
             window.pptxPlayer.silent = true;
             window.pptxPlayer.scheduleAdvance = () => {};
         });
+        const mediaCount = await verifyMedia(page);
+        if (mediaCount) log(`Verified playback and seeking for ${mediaCount} media assets.`);
         const data = await page.evaluate(() => JSON.parse(document.getElementById('pp-data').textContent));
         assert.ok(data.slides.length > 0, 'The presentation has no slides.');
         await page.setViewportSize({ width: Math.ceil(data.width), height: Math.ceil(data.height) });

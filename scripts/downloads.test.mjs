@@ -3,7 +3,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { addDownloadControls, downloadLinks, releaseDownloads, validateDownloadSize } from './downloads.mjs';
+import { addDownloadControls, downloadLinks, releaseDownloads, validateDownloadSize,
+    releaseAssetUrl, mediaAssetPrefix, releasedMediaNames } from './downloads.mjs';
 
 async function pair(t, name = 'alpha') {
     const root = await mkdtemp(path.join(tmpdir(), 'slides-download-test-'));
@@ -105,4 +106,34 @@ test('immutable releases and read failures are explicit errors, not empty succes
     await assert.rejects(fixture({ id: 42, immutable: true }).downloads.list(), /immutable/);
     const downloads = releaseDownloads(async () => { throw new Error('permission denied'); });
     await assert.rejects(downloads.list(), /Could not read/);
+});
+
+test('uploads stable media with its deck and applies the same validation, replacement and retries', async t => {
+    const f = fixture();
+    await f.downloads.list();
+    const file = await pair(t);
+    file.media = [path.join(path.dirname(file.pptx), 'alpha--media--media1.mp4')];
+    await writeFile(file.media[0], 'unaltered media');
+    f.failUploads(1);
+    await f.downloads.publish([file], ['alpha--media--old.mp4']);
+    const uploads = f.calls.filter(args => args[1] === 'upload');
+    assert.equal(uploads.length, 2);
+    assert.deepEqual(uploads[0], ['release', 'upload', 'downloads', file.pptx, file.pdf, ...file.media,
+        '--clobber', '--repo', 'segunak/slides']);
+    assert.deepEqual(uploads[0], uploads[1]);
+    assert.ok(f.calls.findIndex(args => args[1] === 'delete-asset') > f.calls.findLastIndex(args => args[1] === 'upload'));
+    const count = uploads.length;
+    await writeFile(file.media[0], '');
+    await assert.rejects(f.downloads.publish([file], []), /nonempty/);
+    assert.equal(f.calls.filter(args => args[1] === 'upload').length, count);
+});
+
+test('reads owned release-media references without another manifest or confusion between similar deck names', () => {
+    const url = releaseAssetUrl('alpha--media--media1.mp4');
+    assert.equal(mediaAssetPrefix('alpha'), 'alpha--media--');
+    assert.deepEqual(releasedMediaNames(`<video src="${url}"></video>
+<script>{"url":"${url}"}</script>
+<img src="${releaseAssetUrl('alpha-beta--media--image.png')}">
+<a href="${releaseAssetUrl('alpha.pptx')}">Download</a>`, 'alpha'), ['alpha--media--media1.mp4']);
+    assert.deepEqual(releasedMediaNames('<video src="assets/media1.mp4">', 'alpha'), []);
 });

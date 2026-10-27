@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { crc32 } from 'node:zlib';
-import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, open, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { chromium } from 'playwright';
-import { convertDeck, readConfig, readState, renderIndex, updateDecks, validatePublicFiles, MAX_FILE_BYTES, MAX_SITE_BYTES } from './update-decks.mjs';
-import { addDownloadControls } from './downloads.mjs';
+import { convertDeck, readConfig, readState, renderIndex, updateDecks, validatePublicFiles, prepareReleaseMedia,
+    MAX_FILE_BYTES, MAX_SITE_BYTES } from './update-decks.mjs';
+import { addDownloadControls, releaseAssetUrl } from './downloads.mjs';
 import { verifyAndExport } from './presentation-browser.mjs';
 
 const html = '<!doctype html><html><head><meta name="generator" content="PPTX2HTML"><script id="pp-fonts" type="application/json">[]</script></head><body><script id="pp-data">{}</script></body></html>';
@@ -64,6 +65,7 @@ async function fixture(t, old = [], selected = old.map(deck => [deck.name, deck.
                 for (const file of files) {
                     assets.add(`${file.name}.pptx`);
                     assets.add(`${file.name}.pdf`);
+                    for (const media of file.media || []) assets.add(path.basename(media));
                 }
                 for (const name of removed) assets.delete(name);
                 calls.push(['upload', files.map(file => file.name), removed]);
@@ -400,6 +402,99 @@ test('enforces exact generated-file and published-site size thresholds', async t
     assert.equal(await validatePublicFiles(directory, { maxFileBytes: 5, maxSiteBytes: 5 }), 5);
     await assert.rejects(validatePublicFiles(directory, { maxFileBytes: 4 }), /100 MiB/);
     await assert.rejects(validatePublicFiles(directory, { maxSiteBytes: 4 }), /1 GB/);
+});
+
+test('offloads only media above the cutoff and rewrites exact HTML, CSS and player-data references', async t => {
+    const f = await fixture(t);
+    const output = path.join(f.root, 'decks', 'alpha');
+    await mkdir(path.join(output, 'assets'), { recursive: true });
+    const page = `<video src="assets/media1.mp4"></video><script>{"url":"assets/media1.mp4"}</script>
+<style>.poster{background:url(assets/media1.mp4)}</style><span>assets/media1.mp4.keep</span>
+<img src="assets/small.gif">`;
+    await writeFile(path.join(output, 'index.html'), page);
+    await writeFile(path.join(output, 'assets', 'media1.mp4'), '12345');
+    await writeFile(path.join(output, 'assets', 'small.gif'), '1234');
+    const media = await prepareReleaseMedia(output, 'alpha', f.temporary, 4);
+    assert.deepEqual(media, [path.join(f.temporary, 'alpha--media--media1.mp4')]);
+    assert.equal(await readFile(media[0], 'utf8'), '12345');
+    assert.deepEqual(await readdir(path.join(output, 'assets')), ['small.gif']);
+    const url = releaseAssetUrl('alpha--media--media1.mp4');
+    assert.equal(await readFile(path.join(output, 'index.html'), 'utf8'),
+        page.replaceAll('"assets/media1.mp4"', `"${url}"`).replace('(assets/media1.mp4)', `(${url})`));
+    assert.deepEqual(await prepareReleaseMedia(output, 'alpha', f.temporary, 4), []);
+    await validatePublicFiles(output, { maxFileBytes: 1000 });
+});
+
+test('source and credential restrictions cannot be bypassed by oversized-media offloading', async t => {
+    const f = await fixture(t);
+    const output = path.join(f.root, 'decks', 'alpha');
+    await mkdir(path.join(output, 'assets'), { recursive: true });
+    await writeFile(path.join(output, 'index.html'), '<video src="assets/secret.key"></video>');
+    await writeFile(path.join(output, 'assets', 'secret.key'), '12345');
+    await assert.rejects(prepareReleaseMedia(output, 'alpha', f.temporary, 4), /credentials/);
+    assert.deepEqual(await readdir(f.temporary), []);
+    assert.equal(await readFile(path.join(output, 'assets', 'secret.key'), 'utf8'), '12345');
+});
+
+test('validates media locally before offloading, preserves unrelated release assets, and repairs missing media', async t => {
+    const f = await fixture(t, [published('alpha'), published('alpha-beta')]);
+    f.assets.add('alpha--media--old.mp4');
+    f.assets.add('alpha-beta--media--keep.mp4');
+    f.assets.add('unrelated.txt');
+    f.options.force = true;
+    f.options.convert = async (_, output) => {
+        await mkdir(path.join(output, 'assets'), { recursive: true });
+        await writeFile(path.join(output, 'index.html'), html.replace('</body>', '<video src="assets/media1.mp4"></video></body>'));
+        const media = await open(path.join(output, 'assets', 'media1.mp4'), 'w');
+        try { await media.truncate(MAX_FILE_BYTES + 1); } finally { await media.close(); }
+    };
+    const verify = f.options.verify;
+    f.options.verify = async (output, pdf) => {
+        assert.ok((await readFile(path.join(output, 'index.html'), 'utf8')).includes('src="assets/media1.mp4"'));
+        const media = await open(path.join(output, 'assets', 'media1.mp4'), 'r');
+        try { assert.equal((await media.stat()).size, MAX_FILE_BYTES + 1); } finally { await media.close(); }
+        await verify(output, pdf);
+    };
+    await updateDecks(f.options);
+    const uploaded = f.calls.find(call => call[0] === 'upload');
+    assert.deepEqual(uploaded[2], ['alpha--media--old.mp4', 'alpha-beta--media--keep.mp4']);
+    assert.ok(f.assets.has('unrelated.txt'));
+    assert.ok(f.assets.has('alpha--media--media1.mp4'));
+    const page = await readFile(path.join(f.root, 'decks', 'alpha', 'index.html'), 'utf8');
+    assert.ok(page.includes(releaseAssetUrl('alpha--media--media1.mp4')));
+    assert.deepEqual(await readdir(path.join(f.root, 'decks', 'alpha', 'assets')), []);
+    assert.deepEqual(await readdir(f.temporary), []);
+    f.options.force = false;
+    assert.equal((await updateDecks(f.options)).changed, false);
+    f.assets.delete('alpha--media--media1.mp4');
+    assert.deepEqual((await updateDecks(f.options)).updated, ['alpha']);
+    assert.ok(f.assets.has('alpha-beta--media--media1.mp4'));
+});
+
+test('removes all owned release media on unpublication and obsolete media when a deck becomes small', async t => {
+    const f = await fixture(t, [published('alpha'), published('alpha-beta')], [['alpha-beta', 'alpha-beta']]);
+    for (const name of ['alpha--media--old.mp4', 'alpha-beta--media--keep.mp4', 'notes.txt']) f.assets.add(name);
+    await updateDecks(f.options);
+    assert.deepEqual(f.calls.find(call => call[0] === 'upload')[2],
+        ['alpha.pptx', 'alpha.pdf', 'alpha--media--old.mp4']);
+    assert.ok(f.assets.has('alpha-beta--media--keep.mp4'));
+    f.options.force = true;
+    await updateDecks(f.options);
+    assert.deepEqual(f.calls.findLast(call => call[0] === 'upload')[2], ['alpha-beta--media--keep.mp4']);
+    assert.ok(f.assets.has('notes.txt'));
+});
+
+test('missing release media cannot upload any assets after local verification fails', async t => {
+    const f = await fixture(t, [published('alpha')]);
+    const file = path.join(f.root, 'decks', 'alpha', 'index.html');
+    await writeFile(file, (await readFile(file, 'utf8')).replace('</body>',
+        `<video src="${releaseAssetUrl('alpha--media--missing.mp4')}"></video></body>`));
+    const before = await snapshot(f.root);
+    f.options.verify = async () => { throw new Error('Media could not decode'); };
+    await assert.rejects(updateDecks(f.options), /Media could not decode/);
+    assert.deepEqual(await snapshot(f.root), before);
+    assert.ok(!f.calls.some(call => call[0] === 'upload'));
+    assert.deepEqual(await readdir(f.temporary), []);
 });
 
 // A tiny, original OOXML package exercises the real converter without retaining a PPTX fixture in Git.

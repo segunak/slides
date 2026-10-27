@@ -8,7 +8,8 @@ import { promisify } from 'node:util';
 import { parseDocument } from 'yaml';
 import { connectOneDrive } from './onedrive.mjs';
 import { converterRoot, correctedConverter } from './converter-player.mjs';
-import { addDownloadControls, downloadLinks, downloadMarker, releaseDownloads } from './downloads.mjs';
+import { addDownloadControls, downloadLinks, downloadMarker, releaseDownloads, releaseAssetUrl,
+    mediaAssetPrefix, releasedMediaNames, validateDownloadSize } from './downloads.mjs';
 import { verifyAndExport } from './presentation-browser.mjs';
 import { fontMarker } from './fonts.mjs';
 
@@ -199,6 +200,35 @@ export async function validatePublicFiles(directory, {
     return total;
 }
 
+export async function prepareReleaseMedia(directory, name, temporary, maxFileBytes = MAX_FILE_BYTES) {
+    await validatePublicFiles(directory, { maxFileBytes: Infinity, maxSiteBytes: Infinity });
+    const folder = path.join(directory, 'assets');
+    const media = [];
+    if (!await exists(folder)) return media;
+    const htmlFile = path.join(directory, 'index.html');
+    let html = await readFile(htmlFile, 'utf8');
+    // The converter's asset writer emits a flat directory of uniquely named media files.
+    for (const entry of await readdir(folder, { withFileTypes: true })) {
+        if (!entry.isFile()) continue;
+        const source = path.join(folder, entry.name);
+        const info = await lstat(source);
+        if (info.size <= maxFileBytes) continue;
+        validateDownloadSize(info.size, entry.name);
+        assert.match(entry.name, /^[a-zA-Z0-9._-]+$/, `Unsupported release media filename: ${entry.name}.`);
+        const destination = path.join(temporary, mediaAssetPrefix(name) + entry.name);
+        const local = `assets/${encodeURIComponent(entry.name)}`;
+        const pattern = new RegExp(local.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=["\'\\s)\\\\]|$)', 'g');
+        const updated = html.replace(pattern, () => releaseAssetUrl(path.basename(destination)));
+        assert.notEqual(updated, html, `Could not locate references to oversized media: ${entry.name}.`);
+        await cp(source, destination);
+        await rm(source);
+        html = updated;
+        media.push(destination);
+    }
+    if (media.length) await writeFile(htmlFile, html);
+    return media;
+}
+
 async function replacePublication(root, stage) {
     const output = path.join(root, 'decks');
     const backup = path.join(stage, 'previous');
@@ -241,6 +271,7 @@ export async function updateDecks({
         const html = await exists(htmlFile) ? await readFile(htmlFile, 'utf8') : '';
         const changed = force || old?.id !== deck.id || old.eTag !== item.eTag ||
             !assets.has(`${deck.name}.pptx`) || !assets.has(`${deck.name}.pdf`) ||
+            releasedMediaNames(html, deck.name).some(name => !assets.has(name)) ||
             ![downloadMarker, fontMarker].every(marker => html.includes(marker));
         planned.push({ ...deck, item, changed });
     }
@@ -283,13 +314,17 @@ export async function updateDecks({
             const pdf = path.join(temporary, `${deck.name}.pdf`);
             await writeFile(path.join(output, 'index.html'), addDownloadControls(html, deck.name));
             await verify(output, pdf, { log });
-            preparedDownloads.push({ name: deck.name, pptx: input, pdf });
+            const media = await prepareReleaseMedia(output, deck.name, temporary);
+            preparedDownloads.push({ name: deck.name, pptx: input, pdf, media });
         }
         await writeFile(path.join(site, 'index.html'), index);
         await writeFile(path.join(site, 'pptx2html-license.txt'), await license());
         const bytes = await validatePublicFiles(site);
         await writeFile(path.join(stage, 'state.json'), JSON.stringify(next, null, 2) + '\n');
-        const removedAssets = removed.flatMap(deck => [`${deck.name}.pptx`, `${deck.name}.pdf`]).filter(name => assets.has(name));
+        const currentMedia = new Set(preparedDownloads.flatMap(file => file.media.map(file => path.basename(file))));
+        const removedAssets = [...assets].filter(name =>
+            removed.some(deck => name === `${deck.name}.pptx` || name === `${deck.name}.pdf` || name.startsWith(mediaAssetPrefix(deck.name))) ||
+            changedDecks.some(deck => name.startsWith(mediaAssetPrefix(deck.name))) && !currentMedia.has(name));
         await downloads.publish(preparedDownloads, removedAssets);
         await replacePublication(root, stage);
         log(`Prepared ${changedDecks.length} updated and ${removed.length} removed decks (${bytes} published bytes).`);

@@ -8,9 +8,14 @@ import { BASE_CSS } from 'pptx2html';
 import { chromium } from 'playwright';
 import { converterRoot, correctedPlayer, correctPlayerSource, correctTimingSource, correctEngineSource, correctStartupSource, correctedEngine } from './converter-player.mjs';
 import { addDownloadControls } from './downloads.mjs';
-import { verifyAndExport, validatePdf } from './presentation-browser.mjs';
+import { verifyAndExport, validatePdf, verifyMedia } from './presentation-browser.mjs';
 
-async function fixture(t, player, { missingImage = false } = {}) {
+// Original two-second 16x16 red H.264 test clip, generated with FFmpeg.
+const video = Buffer.from(
+    'AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMwbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAlt0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAAAAABAAAAAAHTbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABfm1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAT5zdGJsAAAAtnN0c2QAAAAAAAAAAQAAAKZhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABFExhdmM2MC45LjEwMCBsaWJ4MjY0AAAAAAAAAAAAAAAAGP//AAAALGF2Y0MBQsAK/+EAFWdCwAraewEQAAADABAAAAMAQPEiagEABGjOD8gAAAAQcGFzcAAAAAEAAAABAAAAFGJ0cnQAAAAAAAAKJAAACiQAAAAYc3R0cwAAAAAAAAABAAAABAAAIAAAAAAUc3NzcwAAAAAAAAABAAAAAQAAABxzdHNjAAAAAAAAAAEAAAABAAAABAAAAAEAAAAkc3RzegAAAAAAAAAAAAAABAAAAm4AAAAJAAAACQAAAAkAAAAUc3RjbwAAAAAAAAABAAADYAAAAGF1ZHRhAAAAWW1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAALGlsc3QAAAAkqXRvbwAAABxkYXRhAAAAAQAAAABMYXZmNjAuNC4xMDEAAAAIZnJlZQAAApFtZGF0AAACUwYF//9P3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE2NCByMzEwNiBlYWE2OGZhIC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAyMyAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTAgcmVmPTEgZGVibG9jaz0wOjA6MCBhbmFseXNlPTA6MCBtZT1kaWEgc3VibWU9MCBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0wIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MCA4eDhkY3Q9MCBjcW09MCBkZWF6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PTAgdGhyZWFkcz0xIGxvb2thaGVhZF90aHJlYWRzPTEgc2xpY2VkX3RocmVhZHM9MCBucj0wIGRlY2ltYXRlPTEgaW50ZXJsYWNlZD0wIGJsdXJheV9jb21wYXQ9MCBjb25zdHJhaW5lZF9pbnRyYT0wIGJmcmFtZXM9MCB3ZWlnaHRwPTAga2V5aW50PTI1MCBrZXlpbnRfbWluPTIgc2NlbmVjdXQ9MCBpbnRyYV9yZWZyZXNoPTAgcmM9Y3JmIG1idHJlZT0wIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTAgAIAAAAATZYiEOhGKAAIY8cAAQPY4AAh5YAAAAAVBmiASpQAAAAVBmkATpQAAAAVBmmATpQ==',
+    'base64');
+
+async function fixture(t, player, { missingImage = false, media = false } = {}) {
     const root = await mkdtemp(path.join(tmpdir(), 'slides-format-test-'));
     t.after(() => rm(root, { recursive: true, force: true }));
     const behaviour = (spid, effect) => ({
@@ -36,14 +41,64 @@ async function fixture(t, player, { missingImage = false } = {}) {
 <div class="pp-el" data-spid="3" data-layer="slide" style="left:30px;top:160px;width:550px;height:100px">
 <div class="pp-p"><span style="font-size:24px;color:#50e6ff">Second reveal</span></div></div>
 ${missingImage ? '<img src="missing.png">' : ''}
+${media ? '<video src="clip.mp4" preload="metadata" width="16" height="16"></video>' : ''}
 </section>
 <section class="pp-slide" id="slide-2" style="width:640px;height:360px"><div class="pp-p"><span style="font-size:24px;color:#000">Last slide</span></div><div class="pp-el" style="left:700px;top:10px;width:200px;height:40px"><div class="pp-p"><span style="font-size:24px">Off-slide authoring note</span></div></div></section>
 </div>
 <script type="application/json" id="pp-data">${JSON.stringify(data)}</script>
 <script>${player}</script></body></html>`;
     await writeFile(path.join(root, 'index.html'), html);
+    if (media) await writeFile(path.join(root, 'clip.mp4'), video);
     return root;
 }
+
+test('a valid MP4 decodes, plays, seeks and exports without treating metadata cancellation as a broken asset', async t => {
+    const root = await fixture(t, await correctedPlayer(), { media: true });
+    const messages = [];
+    assert.deepEqual(await verifyAndExport(root, path.join(root, 'reading-copy.pdf'), {
+        log: message => messages.push(message)
+    }), { slides: 2 });
+    assert.ok(messages.some(message => /Verified playback and seeking for 1 media assets/.test(message)));
+});
+
+for (const failure of ['missing', 'unsupported']) {
+    test(`${failure} MP4 files still stop publication`, async t => {
+        const root = await fixture(t, await correctedPlayer(), { media: true });
+        if (failure === 'missing') await rm(path.join(root, 'clip.mp4'));
+        else await writeFile(path.join(root, 'clip.mp4'), 'not a supported video');
+        await assert.rejects(verifyAndExport(root, path.join(root, 'unpublished.pdf'), { log: () => {} }),
+            /Asset load failed|Media .*clip\.mp4/);
+    });
+}
+
+test('a release media URL remains a playable, seekable subresource and failed playback is not ignored', async t => {
+    const browser = await chromium.launch();
+    t.after(() => browser.close());
+    const page = await browser.newPage();
+    const requests = [];
+    const url = 'https://github.com/segunak/slides/releases/download/downloads/alpha--media--media1.mp4';
+    await page.route(url, route => {
+        requests.push(route.request().url());
+        return route.fulfill({ contentType: 'video/mp4',
+            headers: { 'Content-Disposition': 'attachment; filename="alpha--media--media1.mp4"', 'Accept-Ranges': 'bytes' },
+            body: video });
+    });
+    await page.setContent(`<video src="${url}" preload="metadata"></video>`);
+    assert.equal(await verifyMedia(page), 1);
+    assert.ok(requests.length > 0 && requests.every(request => request === url));
+    await page.locator('video').evaluate(async media => {
+        media.muted = true;
+        const ended = new Promise(resolve => media.addEventListener('ended', resolve, { once: true }));
+        await media.play();
+        await ended;
+    });
+    assert.equal(await page.locator('video').evaluate(media => media.ended), true);
+    assert.equal(await verifyMedia(page), 1, 'Previously completed media must still pass playback verification.');
+    await page.locator('video').evaluate(media => {
+        media.play = () => Promise.reject(new Error('Playback failed'));
+    });
+    await assert.rejects(verifyMedia(page), /Playback failed/);
+});
 
 test('the style correction refuses unknown converter source instead of patching it blindly', () => {
     for (const correct of [correctPlayerSource, correctTimingSource, correctEngineSource, correctStartupSource]) {

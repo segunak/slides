@@ -6,14 +6,24 @@ import { promisify } from 'node:util';
 const exec = promisify(execFile);
 const repository = 'segunak/slides';
 const releaseTag = 'downloads';
+const releaseUrl = `https://github.com/${repository}/releases/download/${releaseTag}/`;
 export const downloadMarker = 'data-slide-downloads';
+
+export const releaseAssetUrl = name => releaseUrl + encodeURIComponent(name);
+export const mediaAssetPrefix = name => `${name}--media--`;
+
+export function releasedMediaNames(html, name) {
+    const urls = html.match(/https:\/\/github\.com\/segunak\/slides\/releases\/download\/downloads\/[^"'<>\\\s)]+/g) || [];
+    return [...new Set(urls.filter(url => url.startsWith(releaseAssetUrl(mediaAssetPrefix(name))))
+        .map(url => decodeURIComponent(url.slice(releaseUrl.length))))];
+}
 
 export function validateDownloadSize(bytes, name) {
     assert.ok(bytes > 0 && bytes < 2 ** 31, `Download ${name} must be nonempty and smaller than GitHub's 2 GiB release-asset limit.`);
 }
 
 export function downloadLinks(name) {
-    const base = `https://github.com/${repository}/releases/download/${releaseTag}/${name}`;
+    const base = releaseAssetUrl(name);
     return `<a href="${base}.pdf" aria-label="Download PDF">Download PDF</a> <a href="${base}.pptx" aria-label="Download PowerPoint">Download PowerPoint</a>`;
 }
 
@@ -62,7 +72,7 @@ export function releaseDownloads(run = gh, log = console.log) {
         },
         async publish(files, removed) {
             for (const file of files) {
-                for (const source of [file.pptx, file.pdf]) {
+                for (const source of [file.pptx, file.pdf, ...(file.media || [])]) {
                     const info = await stat(source);
                     assert.ok(info.isFile(), `Download is not a regular file: ${source}.`);
                     validateDownloadSize(info.size, file.name);
@@ -77,7 +87,8 @@ export function releaseDownloads(run = gh, log = console.log) {
             for (const file of files) {
                 for (let attempt = 1; ; attempt++) {
                     try {
-                        await run(['release', 'upload', releaseTag, file.pptx, file.pdf, '--clobber', '--repo', repository]);
+                        await run(['release', 'upload', releaseTag, file.pptx, file.pdf, ...(file.media || []),
+                            '--clobber', '--repo', repository]);
                         break;
                     } catch {
                         if (attempt === 3) throw new Error(`Could not replace downloads for ${file.name} after three attempts. No website publication will be committed.`);
