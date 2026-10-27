@@ -84,8 +84,12 @@ test('bundles only requested styles, original-first CSS, local assets, notices, 
     const messages = [];
     await verifyFonts(page, session, 0, message => messages.push(message), new Set());
     assert.ok(messages.some(message => /Imaginary Sans.*\[bundled\]/.test(message)));
-    await page.locator('#fallback').evaluate(e => { e.style.fontFamily = 'monospace'; });
-    await assert.rejects(verifyFonts(page, session, 0, () => {}, new Set()), /unexpected font substitution/);
+    for (let attempt = 0; attempt < 20; attempt++) {
+        await page.locator('#fallback').evaluate(e => { e.style.fontFamily = '"Imaginary Sans", "pp-web-1", sans-serif'; });
+        await verifyFonts(page, session, 0, () => {}, new Set());
+        await page.locator('#fallback').evaluate(e => { e.style.fontFamily = 'monospace'; });
+        await assert.rejects(verifyFonts(page, session, 0, () => {}, new Set()), /unexpected font substitution/);
+    }
 });
 
 test('font download and invalid-CSS failures are explicit and leave the original HTML intact', async t => {

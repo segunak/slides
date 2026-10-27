@@ -133,6 +133,12 @@ if(!faces.length)throw new Error('Presentation font failed to load: '+f.family);
 }
 
 export async function verifyFonts(page, session, slide, log, seen) {
+    // CDP can report the previous font until pending style changes have been laid out.
+    await page.evaluate(async () => {
+        document.documentElement.getBoundingClientRect();
+        await document.fonts.ready;
+        await new Promise(resolve => requestAnimationFrame(resolve));
+    });
     const { root } = await session.send('DOM.getDocument');
     const selector = `#slide-${slide + 1} [data-pp-font]`;
     const { nodeIds } = await session.send('DOM.querySelectorAll', { nodeId: root.nodeId, selector });
