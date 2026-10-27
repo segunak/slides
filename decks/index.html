@@ -11,7 +11,7 @@
     .page { width: min(100% - 2rem, 68rem); margin: 0 auto; }
     a { color: #006f9b; text-underline-offset: .2em; }
     a:hover { color: #b40e4e; }
-    a:focus-visible { outline: 3px solid #006f9b; outline-offset: 4px; border-radius: 3px; }
+    a:focus-visible, button:focus-visible { outline: 3px solid #006f9b; outline-offset: 4px; border-radius: 3px; }
     header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; padding: 1.25rem 0; border-bottom: 1px solid #dce3e9; }
     header a { display: inline-flex; align-items: center; min-height: 44px; }
     .site-name { color: #1b2533; font-weight: 700; text-decoration: none; }
@@ -23,9 +23,16 @@
     .deck { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem 2rem; padding: 1.5rem; border: 1px solid #dce3e9; border-radius: 12px; background: #fff; }
     .deck-info { min-width: 0; }
     h2 { margin: 0; font-size: 1.1rem; line-height: 1.5; font-weight: 650; overflow-wrap: anywhere; }
-    h2 a { color: #1b2533; text-decoration: none; }
-    h2 a:hover { text-decoration: underline; }
-    .deck-url { margin: .5rem 0 0; color: #596573; font-size: .8rem; overflow-wrap: anywhere; }
+    h2 a { text-decoration: underline; text-decoration-thickness: 1px; }
+    h2 a:hover { text-decoration-thickness: 2px; }
+    .external-icon { width: .9em; height: .9em; margin-left: .35em; vertical-align: -.1em; }
+    .deck-url { display: flex; align-items: center; gap: .35rem; margin: .5rem 0 0; color: #596573; font-size: .8rem; }
+    .url-text { min-width: 0; overflow-wrap: anywhere; user-select: all; }
+    .copy-url { flex: none; width: 44px; height: 44px; padding: .5rem; border: 0; border-radius: 6px; color: #006f9b; background: transparent; cursor: pointer; }
+    .copy-url:hover { background: #eaf3f8; }
+    .copy-url svg { vertical-align: middle; }
+    .copy-status { margin: .25rem 0 0; font-size: .8rem; overflow-wrap: anywhere; }
+    .copy-status:empty { display: none; }
     .downloads { display: flex; flex-wrap: wrap; gap: .5rem; }
     .downloads a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; max-width: 100%; padding: .65rem .85rem; border: 1px solid #b8cbd7; border-radius: 7px; font-size: .85rem; font-weight: 600; line-height: 1.35; text-align: center; text-decoration: none; }
     .downloads a:first-child { color: #fff; background: #006f9b; border-color: #006f9b; }
@@ -44,44 +51,96 @@
   <div class="heading"><h1>Slides</h1><p class="count">9 decks</p></div>
   <ul class="deck-list" role="list">
     <li class="deck">
-      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/context-engineering-is-software-engineering/">Context Engineering Is Software Engineering</a></h2><p class="deck-url">https://segunakinyemi.com/slides/context-engineering-is-software-engineering/</p></div>
+      <div class="deck-info">
+        <h2><a href="https://segunakinyemi.com/slides/context-engineering-is-software-engineering/" target="_blank" rel="noopener noreferrer" aria-label="Context Engineering Is Software Engineering (opens in a new tab)">Context Engineering Is Software Engineering<svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M15 3h6v6m0-6L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></svg></a></h2>
+        <div class="deck-url"><span class="url-text">https://segunakinyemi.com/slides/context-engineering-is-software-engineering/</span><button class="copy-url" type="button" data-url="https://segunakinyemi.com/slides/context-engineering-is-software-engineering/" aria-label="Copy URL for Context Engineering Is Software Engineering" title="Copy URL" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div>
+        <p class="copy-status" role="status"></p>
+      </div>
       <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/context-engineering-is-software-engineering.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/context-engineering-is-software-engineering.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
     </li>
     <li class="deck">
-      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/agentic-ai-technical-audience/">[Technical Audiences - Guess What the Agent Did Game] - Agentic AI - From Acronyms to Application</a></h2><p class="deck-url">https://segunakinyemi.com/slides/agentic-ai-technical-audience/</p></div>
+      <div class="deck-info">
+        <h2><a href="https://segunakinyemi.com/slides/agentic-ai-technical-audience/" target="_blank" rel="noopener noreferrer" aria-label="[Technical Audiences - Guess What the Agent Did Game] - Agentic AI - From Acronyms to Application (opens in a new tab)">[Technical Audiences - Guess What the Agent Did Game] - Agentic AI - From Acronyms to Application<svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M15 3h6v6m0-6L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></svg></a></h2>
+        <div class="deck-url"><span class="url-text">https://segunakinyemi.com/slides/agentic-ai-technical-audience/</span><button class="copy-url" type="button" data-url="https://segunakinyemi.com/slides/agentic-ai-technical-audience/" aria-label="Copy URL for [Technical Audiences - Guess What the Agent Did Game] - Agentic AI - From Acronyms to Application" title="Copy URL" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div>
+        <p class="copy-status" role="status"></p>
+      </div>
       <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-technical-audience.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-technical-audience.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
     </li>
     <li class="deck">
-      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/agentic-ai-general-audience/">[General Audiences - Guess What the Agent Did Game] - Agentic AI - From Acronyms to Application</a></h2><p class="deck-url">https://segunakinyemi.com/slides/agentic-ai-general-audience/</p></div>
+      <div class="deck-info">
+        <h2><a href="https://segunakinyemi.com/slides/agentic-ai-general-audience/" target="_blank" rel="noopener noreferrer" aria-label="[General Audiences - Guess What the Agent Did Game] - Agentic AI - From Acronyms to Application (opens in a new tab)">[General Audiences - Guess What the Agent Did Game] - Agentic AI - From Acronyms to Application<svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M15 3h6v6m0-6L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></svg></a></h2>
+        <div class="deck-url"><span class="url-text">https://segunakinyemi.com/slides/agentic-ai-general-audience/</span><button class="copy-url" type="button" data-url="https://segunakinyemi.com/slides/agentic-ai-general-audience/" aria-label="Copy URL for [General Audiences - Guess What the Agent Did Game] - Agentic AI - From Acronyms to Application" title="Copy URL" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div>
+        <p class="copy-status" role="status"></p>
+      </div>
       <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-general-audience.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-general-audience.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
     </li>
     <li class="deck">
-      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/agentic-ai-hands-on-workshop/">[VS Code Activity] - Agentic AI - From Acronyms to Applications</a></h2><p class="deck-url">https://segunakinyemi.com/slides/agentic-ai-hands-on-workshop/</p></div>
+      <div class="deck-info">
+        <h2><a href="https://segunakinyemi.com/slides/agentic-ai-hands-on-workshop/" target="_blank" rel="noopener noreferrer" aria-label="[VS Code Activity] - Agentic AI - From Acronyms to Applications (opens in a new tab)">[VS Code Activity] - Agentic AI - From Acronyms to Applications<svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M15 3h6v6m0-6L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></svg></a></h2>
+        <div class="deck-url"><span class="url-text">https://segunakinyemi.com/slides/agentic-ai-hands-on-workshop/</span><button class="copy-url" type="button" data-url="https://segunakinyemi.com/slides/agentic-ai-hands-on-workshop/" aria-label="Copy URL for [VS Code Activity] - Agentic AI - From Acronyms to Applications" title="Copy URL" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div>
+        <p class="copy-status" role="status"></p>
+      </div>
       <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-hands-on-workshop.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/agentic-ai-hands-on-workshop.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
     </li>
     <li class="deck">
-      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/how-to-train-your-ai-language-activity/">[Language Activity] - How To Train Your AI - Demystifying ChatGPT With the Basics</a></h2><p class="deck-url">https://segunakinyemi.com/slides/how-to-train-your-ai-language-activity/</p></div>
+      <div class="deck-info">
+        <h2><a href="https://segunakinyemi.com/slides/how-to-train-your-ai-language-activity/" target="_blank" rel="noopener noreferrer" aria-label="[Language Activity] - How To Train Your AI - Demystifying ChatGPT With the Basics (opens in a new tab)">[Language Activity] - How To Train Your AI - Demystifying ChatGPT With the Basics<svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M15 3h6v6m0-6L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></svg></a></h2>
+        <div class="deck-url"><span class="url-text">https://segunakinyemi.com/slides/how-to-train-your-ai-language-activity/</span><button class="copy-url" type="button" data-url="https://segunakinyemi.com/slides/how-to-train-your-ai-language-activity/" aria-label="Copy URL for [Language Activity] - How To Train Your AI - Demystifying ChatGPT With the Basics" title="Copy URL" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div>
+        <p class="copy-status" role="status"></p>
+      </div>
       <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/how-to-train-your-ai-language-activity.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/how-to-train-your-ai-language-activity.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
     </li>
     <li class="deck">
-      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/how-to-train-your-ai-coding-activity/">[Coding Activity] - How To Train Your AI - Demystifying ChatGPT With the Basics</a></h2><p class="deck-url">https://segunakinyemi.com/slides/how-to-train-your-ai-coding-activity/</p></div>
+      <div class="deck-info">
+        <h2><a href="https://segunakinyemi.com/slides/how-to-train-your-ai-coding-activity/" target="_blank" rel="noopener noreferrer" aria-label="[Coding Activity] - How To Train Your AI - Demystifying ChatGPT With the Basics (opens in a new tab)">[Coding Activity] - How To Train Your AI - Demystifying ChatGPT With the Basics<svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M15 3h6v6m0-6L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></svg></a></h2>
+        <div class="deck-url"><span class="url-text">https://segunakinyemi.com/slides/how-to-train-your-ai-coding-activity/</span><button class="copy-url" type="button" data-url="https://segunakinyemi.com/slides/how-to-train-your-ai-coding-activity/" aria-label="Copy URL for [Coding Activity] - How To Train Your AI - Demystifying ChatGPT With the Basics" title="Copy URL" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div>
+        <p class="copy-status" role="status"></p>
+      </div>
       <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/how-to-train-your-ai-coding-activity.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/how-to-train-your-ai-coding-activity.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
     </li>
     <li class="deck">
-      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/ai-technical-interview-workshop/">Times Are Changing - The Rise of AI-Assisted Coding Interviews</a></h2><p class="deck-url">https://segunakinyemi.com/slides/ai-technical-interview-workshop/</p></div>
+      <div class="deck-info">
+        <h2><a href="https://segunakinyemi.com/slides/ai-technical-interview-workshop/" target="_blank" rel="noopener noreferrer" aria-label="Times Are Changing - The Rise of AI-Assisted Coding Interviews (opens in a new tab)">Times Are Changing - The Rise of AI-Assisted Coding Interviews<svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M15 3h6v6m0-6L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></svg></a></h2>
+        <div class="deck-url"><span class="url-text">https://segunakinyemi.com/slides/ai-technical-interview-workshop/</span><button class="copy-url" type="button" data-url="https://segunakinyemi.com/slides/ai-technical-interview-workshop/" aria-label="Copy URL for Times Are Changing - The Rise of AI-Assisted Coding Interviews" title="Copy URL" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div>
+        <p class="copy-status" role="status"></p>
+      </div>
       <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/ai-technical-interview-workshop.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/ai-technical-interview-workshop.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
     </li>
     <li class="deck">
-      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/were-not-cooked/">[AI Engineering Focus] - Your Tech Career Survial Guide in the Age of AI</a></h2><p class="deck-url">https://segunakinyemi.com/slides/were-not-cooked/</p></div>
+      <div class="deck-info">
+        <h2><a href="https://segunakinyemi.com/slides/were-not-cooked/" target="_blank" rel="noopener noreferrer" aria-label="[AI Engineering Focus] - Your Tech Career Survial Guide in the Age of AI (opens in a new tab)">[AI Engineering Focus] - Your Tech Career Survial Guide in the Age of AI<svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M15 3h6v6m0-6L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></svg></a></h2>
+        <div class="deck-url"><span class="url-text">https://segunakinyemi.com/slides/were-not-cooked/</span><button class="copy-url" type="button" data-url="https://segunakinyemi.com/slides/were-not-cooked/" aria-label="Copy URL for [AI Engineering Focus] - Your Tech Career Survial Guide in the Age of AI" title="Copy URL" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div>
+        <p class="copy-status" role="status"></p>
+      </div>
       <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/were-not-cooked.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/were-not-cooked.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
     </li>
     <li class="deck">
-      <div class="deck-info"><h2><a href="https://segunakinyemi.com/slides/precision-meets-creativity-with-microsoft-designer/">Precision Meets Creativity with Microsoft Designer</a></h2><p class="deck-url">https://segunakinyemi.com/slides/precision-meets-creativity-with-microsoft-designer/</p></div>
+      <div class="deck-info">
+        <h2><a href="https://segunakinyemi.com/slides/precision-meets-creativity-with-microsoft-designer/" target="_blank" rel="noopener noreferrer" aria-label="Precision Meets Creativity with Microsoft Designer (opens in a new tab)">Precision Meets Creativity with Microsoft Designer<svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M15 3h6v6m0-6L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></svg></a></h2>
+        <div class="deck-url"><span class="url-text">https://segunakinyemi.com/slides/precision-meets-creativity-with-microsoft-designer/</span><button class="copy-url" type="button" data-url="https://segunakinyemi.com/slides/precision-meets-creativity-with-microsoft-designer/" aria-label="Copy URL for Precision Meets Creativity with Microsoft Designer" title="Copy URL" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div>
+        <p class="copy-status" role="status"></p>
+      </div>
       <div class="downloads"><a href="https://github.com/segunak/slides/releases/download/downloads/precision-meets-creativity-with-microsoft-designer.pdf" aria-label="Download PDF">Download PDF</a> <a href="https://github.com/segunak/slides/releases/download/downloads/precision-meets-creativity-with-microsoft-designer.pptx" aria-label="Download PowerPoint">Download PowerPoint</a></div>
     </li>
   </ul>
   </main>
   <footer><a href="https://github.com/g21589/PPTX2HTML">PPTX2HTML</a> &middot; <a href="./pptx2html-license.txt">MIT License</a></footer>
   </div>
+  <script>
+    document.querySelectorAll('.copy-url').forEach(button => {
+      button.hidden = false;
+      button.addEventListener('click', async () => {
+        const status = button.closest('.deck-info').querySelector('.copy-status');
+        status.textContent = '';
+        try {
+          await navigator.clipboard.writeText(button.dataset.url);
+          status.textContent = 'Copied!';
+        } catch (error) {
+          console.error('Could not copy slide URL.', error);
+          status.textContent = 'Copy failed. Select the URL and copy it manually.';
+        }
+      });
+    });
+  </script>
 </body>
 </html>

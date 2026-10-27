@@ -89,7 +89,11 @@ export function renderIndex(decks) {
     const items = decks.map(deck => {
         const url = `https://segunakinyemi.com/slides/${deck.name}/`;
         return `    <li class="deck">
-      <div class="deck-info"><h2><a href="${url}">${escapeHtml(deck.title)}</a></h2><p class="deck-url">${url}</p></div>
+      <div class="deck-info">
+        <h2><a href="${url}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(deck.title)} (opens in a new tab)">${escapeHtml(deck.title)}<svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M15 3h6v6m0-6L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></svg></a></h2>
+        <div class="deck-url"><span class="url-text">${url}</span><button class="copy-url" type="button" data-url="${url}" aria-label="Copy URL for ${escapeHtml(deck.title)}" title="Copy URL" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button></div>
+        <p class="copy-status" role="status"></p>
+      </div>
       <div class="downloads">${downloadLinks(deck.name)}</div>
     </li>`;
     }).join('\n');
@@ -106,7 +110,7 @@ export function renderIndex(decks) {
     .page { width: min(100% - 2rem, 68rem); margin: 0 auto; }
     a { color: #006f9b; text-underline-offset: .2em; }
     a:hover { color: #b40e4e; }
-    a:focus-visible { outline: 3px solid #006f9b; outline-offset: 4px; border-radius: 3px; }
+    a:focus-visible, button:focus-visible { outline: 3px solid #006f9b; outline-offset: 4px; border-radius: 3px; }
     header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; padding: 1.25rem 0; border-bottom: 1px solid #dce3e9; }
     header a { display: inline-flex; align-items: center; min-height: 44px; }
     .site-name { color: #1b2533; font-weight: 700; text-decoration: none; }
@@ -118,9 +122,16 @@ export function renderIndex(decks) {
     .deck { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem 2rem; padding: 1.5rem; border: 1px solid #dce3e9; border-radius: 12px; background: #fff; }
     .deck-info { min-width: 0; }
     h2 { margin: 0; font-size: 1.1rem; line-height: 1.5; font-weight: 650; overflow-wrap: anywhere; }
-    h2 a { color: #1b2533; text-decoration: none; }
-    h2 a:hover { text-decoration: underline; }
-    .deck-url { margin: .5rem 0 0; color: #596573; font-size: .8rem; overflow-wrap: anywhere; }
+    h2 a { text-decoration: underline; text-decoration-thickness: 1px; }
+    h2 a:hover { text-decoration-thickness: 2px; }
+    .external-icon { width: .9em; height: .9em; margin-left: .35em; vertical-align: -.1em; }
+    .deck-url { display: flex; align-items: center; gap: .35rem; margin: .5rem 0 0; color: #596573; font-size: .8rem; }
+    .url-text { min-width: 0; overflow-wrap: anywhere; user-select: all; }
+    .copy-url { flex: none; width: 44px; height: 44px; padding: .5rem; border: 0; border-radius: 6px; color: #006f9b; background: transparent; cursor: pointer; }
+    .copy-url:hover { background: #eaf3f8; }
+    .copy-url svg { vertical-align: middle; }
+    .copy-status { margin: .25rem 0 0; font-size: .8rem; overflow-wrap: anywhere; }
+    .copy-status:empty { display: none; }
     .downloads { display: flex; flex-wrap: wrap; gap: .5rem; }
     .downloads a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; max-width: 100%; padding: .65rem .85rem; border: 1px solid #b8cbd7; border-radius: 7px; font-size: .85rem; font-weight: 600; line-height: 1.35; text-align: center; text-decoration: none; }
     .downloads a:first-child { color: #fff; background: #006f9b; border-color: #006f9b; }
@@ -141,6 +152,22 @@ ${decks.length ? `  <ul class="deck-list" role="list">\n${items}\n  </ul>` : '  
   </main>
   <footer><a href="https://github.com/g21589/PPTX2HTML">PPTX2HTML</a> &middot; <a href="./pptx2html-license.txt">MIT License</a></footer>
   </div>
+  <script>
+    document.querySelectorAll('.copy-url').forEach(button => {
+      button.hidden = false;
+      button.addEventListener('click', async () => {
+        const status = button.closest('.deck-info').querySelector('.copy-status');
+        status.textContent = '';
+        try {
+          await navigator.clipboard.writeText(button.dataset.url);
+          status.textContent = 'Copied!';
+        } catch (error) {
+          console.error('Could not copy slide URL.', error);
+          status.textContent = 'Copy failed. Select the URL and copy it manually.';
+        }
+      });
+    });
+  </script>
 </body>
 </html>
 `;

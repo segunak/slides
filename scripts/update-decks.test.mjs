@@ -130,10 +130,13 @@ test('the HTML index lists every published deck with a visible full URL and clic
         { name: 'alpha', title: 'Alpha' },
         { name: 'how-to-train-your-ai', title: 'How to Train Your AI' }
     ]);
-    const urls = [...page.matchAll(/<h2><a href="([^"]+)">([^<]+)<\/a><\/h2><p class="deck-url">([^<]+)<\/p>/g)];
+    const urls = [...page.matchAll(/<h2><a href="([^"]+)"[^>]*>([^<]+)/g)];
     assert.deepEqual(urls.map(match => match.slice(1)), [
-        ['https://segunakinyemi.com/slides/alpha/', 'Alpha', 'https://segunakinyemi.com/slides/alpha/'],
-        ['https://segunakinyemi.com/slides/how-to-train-your-ai/', 'How to Train Your AI', 'https://segunakinyemi.com/slides/how-to-train-your-ai/']
+        ['https://segunakinyemi.com/slides/alpha/', 'Alpha'],
+        ['https://segunakinyemi.com/slides/how-to-train-your-ai/', 'How to Train Your AI']
+    ]);
+    assert.deepEqual([...page.matchAll(/<span class="url-text">([^<]+)<\/span>/g)].map(match => match[1]), [
+        'https://segunakinyemi.com/slides/alpha/', 'https://segunakinyemi.com/slides/how-to-train-your-ai/'
     ]);
     assert.match(renderIndex([]), /No decks have been published yet/);
     assert.doesNotMatch(renderIndex([]), /<li>/);
@@ -153,6 +156,13 @@ test('the HTML index is readable and keyboard accessible on desktop, mobile, and
     assert.deepEqual(await page.getByRole('heading', { level: 2 }).allTextContents(), decks.map(deck => deck.title));
     assert.equal(await page.getByRole('link', { name: 'Download PDF', exact: true }).count(), decks.length);
     assert.equal(await page.getByRole('link', { name: 'Download PowerPoint', exact: true }).count(), decks.length);
+    assert.equal(await page.getByRole('button', { name: /Copy URL/ }).count(), 0);
+    for (const link of await page.locator('h2 a').all()) {
+        assert.equal(await link.getAttribute('target'), '_blank');
+        assert.equal(await link.getAttribute('rel'), 'noopener noreferrer');
+        assert.match(await link.getAttribute('aria-label'), /opens in a new tab/);
+        assert.equal(await link.evaluate(e => getComputedStyle(e).textDecorationLine), 'underline');
+    }
     await page.keyboard.press('Tab');
     assert.equal(await page.locator(':focus').textContent(), 'Segun Akinyemi');
     assert.equal(await page.locator(':focus').evaluate(e => getComputedStyle(e).outlineStyle), 'solid');
@@ -173,6 +183,59 @@ test('the HTML index is readable and keyboard accessible on desktop, mobile, and
     assert.equal(await page.getByRole('heading', { level: 1 }).count(), 1);
     assert.equal(await page.getByRole('listitem').count(), 0);
     assert.match(await page.getByRole('main').textContent(), /No decks have been published yet/);
+});
+
+test('the HTML index copies exact URLs with keyboard feedback, reports clipboard errors, and opens slides in a new tab', async t => {
+    const browser = await chromium.launch();
+    t.after(() => browser.close());
+    const page = await browser.newPage();
+    const errors = [];
+    page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+    await page.evaluate(() => {
+        window.copiedUrls = [];
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+            writeText: async url => { window.copiedUrls.push(url); }
+        } });
+    });
+    await page.setContent(renderIndex([{ name: 'alpha', title: 'Alpha' }, { name: 'beta', title: 'Beta' }]));
+    for (const name of ['alpha', 'beta']) {
+        const card = page.getByRole('listitem').filter({ has: page.getByRole('heading', { name: new RegExp(name, 'i') }) });
+        const button = card.getByRole('button', { name: /Copy URL/ });
+        await button.focus();
+        await button.press('Enter');
+        await card.getByRole('status').getByText('Copied!', { exact: true }).waitFor();
+        assert.equal(await button.evaluate(e => getComputedStyle(e).outlineStyle), 'solid');
+    }
+    assert.deepEqual(await page.evaluate(() => window.copiedUrls), [
+        'https://segunakinyemi.com/slides/alpha/', 'https://segunakinyemi.com/slides/beta/'
+    ]);
+    for (const state of ['denied', 'unavailable']) {
+        await page.evaluate(state => {
+            if (state === 'unavailable') Object.defineProperty(navigator, 'clipboard', { value: undefined });
+            else navigator.clipboard.writeText = async () => { throw new DOMException('Clipboard denied', 'NotAllowedError'); };
+        }, state);
+        await page.getByRole('button', { name: 'Copy URL for Alpha', exact: true }).click();
+        await page.getByRole('status').getByText('Copy failed. Select the URL and copy it manually.', { exact: true }).waitFor();
+    }
+    assert.equal(errors.filter(message => message.includes('Could not copy slide URL.')).length, 2);
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.locator('html').evaluate(e => { e.style.fontSize = '200%'; });
+    assert.ok(await page.locator('html').evaluate(e => e.scrollWidth <= innerWidth));
+    for (const button of await page.getByRole('button', { name: /Copy URL/ }).all()) {
+        const box = await button.boundingBox();
+        assert.ok(box && box.width >= 44 && box.height >= 44 && box.x >= 0 && box.x + box.width <= 320);
+    }
+    await page.context().route('https://segunakinyemi.com/slides/**', route => route.fulfill({
+        contentType: 'text/html', body: '<title>Slide presentation</title>'
+    }));
+    const opened = page.waitForEvent('popup');
+    await page.getByRole('link', { name: 'Alpha (opens in a new tab)', exact: true }).click();
+    const popup = await opened;
+    await popup.waitForLoadState();
+    assert.equal(popup.url(), 'https://segunakinyemi.com/slides/alpha/');
+    assert.equal(await popup.evaluate(() => window.opener), null);
+    assert.equal(page.url(), 'about:blank');
+    await popup.close();
 });
 
 for (const condition of ['missing', 'stale']) {
@@ -244,7 +307,8 @@ test('a replacement source under the same URL rebuilds even if its eTag matches'
     assert.deepEqual(readState(await readFile(path.join(f.root, '.github', 'decks-state.json'), 'utf8')), [
         published('alpha', 'replacement')
     ]);
-    assert.match(await readFile(path.join(f.root, 'decks', 'index.html'), 'utf8'), />replacement<\/a>/);
+    assert.equal(await readFile(path.join(f.root, 'decks', 'index.html'), 'utf8'),
+        renderIndex([{ name: 'alpha', title: 'replacement' }]));
 });
 
 test('removing entries removes generated directories without downloading any source', async t => {
