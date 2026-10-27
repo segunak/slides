@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { correctedEngine } from './converter-player.mjs';
+import { bundleFonts, verifyFonts } from './fonts.mjs';
 
 const { evaluate, stepEnd } = await correctedEngine();
 
@@ -71,15 +72,21 @@ async function checkState(page, slide, step, timing, metrics, width, height) {
     }, { slide, states: [...expected.states] });
 }
 
-export async function verifyAndExport(directory, pdf, { log = console.log } = {}) {
+export async function verifyAndExport(directory, pdf, { log = console.log, fontRequest = fetch } = {}) {
     const browser = await chromium.launch();
     try {
+        await bundleFonts(browser, directory, fontRequest);
         const page = await browser.newPage();
+        const session = await page.context().newCDPSession(page);
+        await session.send('DOM.enable');
+        await session.send('CSS.enable');
+        const seenFonts = new Set();
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         page.on('requestfailed', request => errors.push(`Asset load failed: ${request.url()}`));
         await page.addInitScript(() => {
-            document.addEventListener('DOMContentLoaded', () => {
+            document.addEventListener('DOMContentLoaded', async () => {
+                if (window.pptxFontsReady) await window.pptxFontsReady;
                 const properties = ['color', 'webkitTextFillColor', 'fontWeight', 'fontStyle', 'textDecorationLine', 'backgroundImage'];
                 window.__slideCheck = new Map([...document.querySelectorAll('.pp-p span')].map(span => {
                     const style = getComputedStyle(span);
@@ -94,6 +101,7 @@ export async function verifyAndExport(directory, pdf, { log = console.log } = {}
             }, { once: true });
         });
         await page.goto(`${pathToFileURL(path.resolve(directory, 'index.html')).href}?notransitions`, { waitUntil: 'load' });
+        await page.evaluate(() => window.pptxFontsReady);
         assert.deepEqual(errors, [], 'The converted presentation failed to initialize.');
         await page.waitForFunction(() => !!window.pptxPlayer);
         await page.evaluate(async () => {
@@ -176,6 +184,7 @@ export async function verifyAndExport(directory, pdf, { log = console.log } = {}
                 clone.classList.remove('pp-current', 'pp-prev', 'pp-on-top');
                 return { html: clone.outerHTML, text };
             }, slide);
+            await verifyFonts(page, session, slide, log, seenFonts);
             finalSlides.push(completed);
         }
         assert.deepEqual(errors, [], 'The converted presentation has browser or asset errors.');

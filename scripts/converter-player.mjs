@@ -62,6 +62,22 @@ export function correctEngineSource(source) {
     ]);
 }
 
+export function correctStartupSource(source) {
+    return correctSource(source, [[
+        "window.PPTXPlayer = Player;",
+        `window.PPTXPlayer = Player;
+function start() {
+  if (!window.pptxFontsReady) return autoStart();
+  return window.pptxFontsReady.then(autoStart).catch(error => {
+    document.body.textContent = 'This presentation could not load its fonts. Please reload the page.';
+    console.error(error);
+    throw error;
+  });
+}`
+    ], ["document.addEventListener('DOMContentLoaded', autoStart);", "document.addEventListener('DOMContentLoaded', start);"],
+    ['else autoStart();', 'else start();']]);
+}
+
 async function bundle(entry, browser = false, embeddedPlayer) {
     const result = await build({
         entryPoints: [path.join(converterRoot, ...entry)],
@@ -76,7 +92,8 @@ async function bundle(entry, browser = false, embeddedPlayer) {
             name: 'correct-pinned-animations',
             setup(builder) {
                 for (const [folder, file, correct] of [
-                    ['runtime', 'player', correctPlayerSource], ['runtime', 'engine', correctEngineSource], ['pptx', 'timing', correctTimingSource]
+                    ['runtime', 'player', correctPlayerSource], ['runtime', 'engine', correctEngineSource],
+                    ['pptx', 'timing', correctTimingSource], ['runtime', 'standalone', correctStartupSource]
                 ]) {
                     builder.onLoad({ filter: new RegExp(`[/\\\\]${folder}[/\\\\]${file}\\.js$`) }, async ({ path: file }) => ({
                         contents: correct(await readFile(file, 'utf8')), loader: 'js'

@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import { BASE_CSS } from 'pptx2html';
 import { chromium } from 'playwright';
-import { converterRoot, correctedPlayer, correctPlayerSource, correctTimingSource, correctEngineSource, correctedEngine } from './converter-player.mjs';
+import { converterRoot, correctedPlayer, correctPlayerSource, correctTimingSource, correctEngineSource, correctStartupSource, correctedEngine } from './converter-player.mjs';
 import { addDownloadControls } from './downloads.mjs';
 import { verifyAndExport, validatePdf } from './presentation-browser.mjs';
 
@@ -46,9 +46,25 @@ ${missingImage ? '<img src="missing.png">' : ''}
 }
 
 test('the style correction refuses unknown converter source instead of patching it blindly', () => {
-    for (const correct of [correctPlayerSource, correctTimingSource, correctEngineSource]) {
+    for (const correct of [correctPlayerSource, correctTimingSource, correctEngineSource, correctStartupSource]) {
         assert.throws(() => correct('unrelated source'), /pinned PPTX2HTML source changed/);
     }
+});
+
+test('player layout and download controls wait for fonts before initialization', async t => {
+    const root = await fixture(t, await correctedPlayer());
+    const file = path.join(root, 'index.html');
+    const html = (await readFile(file, 'utf8')).replace('<head>',
+        '<head><script>window.pptxFontsReady=new Promise(resolve=>window.releaseFonts=resolve)</script>');
+    await writeFile(file, addDownloadControls(html, 'alpha'));
+    const browser = await chromium.launch();
+    t.after(() => browser.close());
+    const page = await browser.newPage();
+    await page.goto(pathToFileURL(file).href);
+    assert.equal(await page.evaluate(() => !!window.pptxPlayer), false);
+    await page.evaluate(() => window.releaseFonts());
+    await page.waitForFunction(() => !!window.pptxPlayer);
+    assert.equal(await page.getByRole('link', { name: 'Download PDF', exact: true }).count(), 1);
 });
 
 test('signed animation speed changes direction without making duration negative', async () => {

@@ -3,7 +3,11 @@ import { appendFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-function runCommand(command, args, { allowFailure = false, inherit = false } = {}) {
+export function runCommand(command, args, { allowFailure = false, inherit = false } = {}) {
+    if (command === 'npm' && process.platform === 'win32') {
+        args = [path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'), ...args];
+        command = process.execPath;
+    }
     const result = spawnSync(command, args, {
         encoding: 'utf8',
         stdio: inherit ? 'inherit' : ['ignore', 'pipe', 'pipe'],
@@ -38,7 +42,7 @@ export function syncDecks({ env = process.env, run = runCommand, log = console.l
         git('switch', '--detach', 'origin/main');
         const base = git('rev-parse', 'HEAD');
         run('npm', ['ci', '--ignore-scripts', '--no-fund'], { inherit: true });
-        run('npm', ['exec', '--', 'playwright', 'install', '--with-deps', 'chromium'], { inherit: true });
+        run('npm', ['exec', '--', 'playwright', 'install', 'chromium'], { inherit: true });
         run('npm', ['test'], { inherit: true });
         if (env.GITHUB_EVENT_NAME === 'push' || env.FORCE_UPDATE === 'true') {
             run('npm', ['run', 'verify:converter'], { inherit: true });

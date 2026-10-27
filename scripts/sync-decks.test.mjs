@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { syncDecks, writeSyncOutputs } from './sync-decks.mjs';
+import { runCommand, syncDecks, writeSyncOutputs } from './sync-decks.mjs';
 
 const first = 'a'.repeat(40);
 const newer = 'b'.repeat(40);
@@ -74,7 +74,7 @@ test('commits only generated output after checking out, installing, testing, and
         'git fetch --no-tags origin main',
         'git switch --detach origin/main',
         'npm ci --ignore-scripts --no-fund',
-        'npm exec -- playwright install --with-deps chromium',
+        'npm exec -- playwright install chromium',
         'npm test',
         'npm run update-decks',
         'git add -- decks .github/decks-state.json',
@@ -155,13 +155,19 @@ test('repeated branch movement is bounded and never produces publication outputs
     assert.equal(f.logs.length, 2);
 });
 
-for (const failure of ['npm ci --ignore-scripts --no-fund', 'npm exec -- playwright install --with-deps chromium', 'npm test', 'npm run update-decks']) {
+for (const failure of ['npm ci --ignore-scripts --no-fund', 'npm exec -- playwright install chromium', 'npm test', 'npm run update-decks']) {
     test(`${failure} failure cannot commit or publish output`, () => {
         const f = fixture({ failure });
         assert.throws(() => syncDecks(f.options), /Failed:/);
         assert.ok(!f.calls.some(call => call.command === 'git' && ['add', 'commit', 'push'].includes(call.args[0])));
     });
 }
+
+test('npm launches directly on the current runner without a shell or .cmd execution', () => {
+    const result = runCommand('npm', ['--version']);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout.trim(), /^\d+\.\d+\.\d+$/);
+});
 
 test('upstream Chromium verification runs before publishing for code pushes and forced rebuilds, not routine schedules', () => {
     for (const env of [

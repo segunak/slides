@@ -8,7 +8,7 @@ import { convertDeck, readConfig, readState, renderIndex, updateDecks, validateP
 import { addDownloadControls } from './downloads.mjs';
 import { verifyAndExport } from './presentation-browser.mjs';
 
-const html = '<!doctype html><html><head><meta name="generator" content="PPTX2HTML"></head><body><script id="pp-data">{}</script></body></html>';
+const html = '<!doctype html><html><head><meta name="generator" content="PPTX2HTML"><script id="pp-fonts" type="application/json">[]</script></head><body><script id="pp-data">{}</script></body></html>';
 const config = decks => `decks:\n${decks.map(([name, id]) => `  - deck-name: "${name}"\n    onedrive-id: "${id}"`).join('\n')}\n`;
 const published = (name, id = name, eTag = 'v1') => ({ name, id, eTag });
 
@@ -263,11 +263,12 @@ for (const failure of ['metadata', 'download', 'conversion', 'verification', 'up
     });
 }
 
-for (const missing of ['download-assets', 'download-controls']) {
+for (const missing of ['download-assets', 'download-controls', 'font-assets']) {
     test(`backfills ${missing} when the original source has not changed`, async t => {
         const f = await fixture(t, [published('alpha')]);
         if (missing === 'download-assets') f.options.downloads.list = async () => new Set();
-        else await writeFile(path.join(f.root, 'decks', 'alpha', 'index.html'), html);
+        else await writeFile(path.join(f.root, 'decks', 'alpha', 'index.html'), missing === 'font-assets' ?
+            addDownloadControls(html.replace('id="pp-fonts"', 'id="old-fonts"'), 'alpha') : html);
         assert.deepEqual((await updateDecks(f.options)).updated, ['alpha']);
         assert.deepEqual(f.calls.find(call => call[0] === 'upload')[1], ['alpha']);
     });
@@ -393,7 +394,14 @@ test('real pinned PPTX2HTML converts an original fixture with player, click sequ
 test('real conversion runs through the complete updater without retaining its PowerPoint source', async t => {
     const f = await fixture(t, [], [['alpha', 'alpha']]);
     f.options.convert = convertDeck;
-    f.options.verify = verifyAndExport;
+    f.options.verify = (output, pdf, options) => verifyAndExport(output, pdf, {
+        ...options,
+        fontRequest: async url => new Response(url.endsWith('METADATA.pb') ? 'fonts {\nstyle: "normal"\nweight: 400\n}' :
+            url.includes('fonts.googleapis.com') ?
+            "@font-face{font-family:'Fixture';font-style:normal;font-weight:400;src:url(https://fonts.gstatic.com/fixture.ttf)}" :
+            url.includes('fonts.gstatic.com') ? await readFile(new URL('../node_modules/pdfjs-dist/standard_fonts/LiberationSans-Regular.ttf', import.meta.url)) :
+                'SIL OPEN FONT LICENSE fixture')
+    });
     f.options.drive.download = async (_, destination) => writeFile(destination, sampleDeck());
     f.options.downloads.publish = async files => {
         assert.deepEqual(await readFile(files[0].pptx), sampleDeck());

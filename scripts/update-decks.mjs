@@ -10,6 +10,7 @@ import { connectOneDrive } from './onedrive.mjs';
 import { converterRoot, correctedConverter } from './converter-player.mjs';
 import { addDownloadControls, downloadLinks, downloadMarker, releaseDownloads } from './downloads.mjs';
 import { verifyAndExport } from './presentation-browser.mjs';
+import { fontMarker } from './fonts.mjs';
 
 const exec = promisify(execFile);
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -176,9 +177,10 @@ export async function updateDecks({
         const item = await drive.getItem(deck.id);
         const old = previous.find(published => published.name === deck.name);
         const htmlFile = path.join(root, 'decks', deck.name, 'index.html');
+        const html = await exists(htmlFile) ? await readFile(htmlFile, 'utf8') : '';
         const changed = force || old?.id !== deck.id || old.eTag !== item.eTag ||
             !assets.has(`${deck.name}.pptx`) || !assets.has(`${deck.name}.pdf`) ||
-            !await exists(htmlFile) || !(await readFile(htmlFile, 'utf8')).includes(downloadMarker);
+            ![downloadMarker, fontMarker].every(marker => html.includes(marker));
         planned.push({ ...deck, item, changed });
     }
     const removed = previous.filter(deck => !config.some(current => current.name === deck.name));

@@ -30,8 +30,9 @@ function addSlideDownloads(){
   if(!ui)throw new Error('Presentation download toolbar is unavailable.');
   ui.insertAdjacentHTML('beforeend',${JSON.stringify(downloadLinks(name))});
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',addSlideDownloads,{once:true});
-else addSlideDownloads();
+function ready(){if(window.pptxFontsReady)window.pptxFontsReady.then(addSlideDownloads);else addSlideDownloads();}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready,{once:true});
+else ready();
 </script>`;
     if (!html.includes('</body>')) throw new Error('The converted presentation has no body.');
     return html.replace('</body>', controls + '\n</body>');

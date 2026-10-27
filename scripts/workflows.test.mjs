@@ -57,9 +57,11 @@ test('updater runs the Actions-only synchronization coordinator with its app tok
 
 test('pull requests install Chromium and run browser/PDF regressions and upstream verification', async () => {
     const update = await workflow('update-decks');
+    assert.equal(update.jobs.test['runs-on'], 'windows-latest');
+    assert.equal(update.jobs.update['runs-on'], 'windows-latest');
     assert.deepEqual(update.jobs.test.steps.filter(step => step.run).map(step => step.run), [
         'npm ci --ignore-scripts --no-fund',
-        'npx playwright install --with-deps chromium',
+        'npx playwright install chromium',
         'npm test',
         'npm run verify:converter'
     ]);
@@ -101,6 +103,7 @@ test('manual publishing shares the full-pipeline lock without deadlocking the up
 test('Pages publishes only decks, rejects superseded output, and needs no Node or Microsoft credentials', async () => {
     const pages = await workflow('publish-pages');
     const deploy = pages.jobs.deploy;
+    assert.equal(deploy['runs-on'], 'ubuntu-latest');
     assert.equal(deploy.environment.name, 'github-pages');
     assert.deepEqual(deploy.permissions, { contents: 'read', pages: 'write', 'id-token': 'write' });
     const upload = deploy.steps.find(step => step.uses?.startsWith('actions/upload-pages-artifact@'));
