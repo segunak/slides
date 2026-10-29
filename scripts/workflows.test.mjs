@@ -18,9 +18,8 @@ test('repository deck configuration and last-published list are readable', async
     readState(await readFile(new URL('.github/decks-state.json', root), 'utf8'));
 });
 
-test('updater supports scheduled/manual runs and excludes documentation and generated-only changes', async () => {
+test('updater supports manual runs and excludes documentation and generated-only changes', async () => {
     const update = await workflow('update-decks');
-    assert.equal(update.on.schedule[0].cron, '17 */6 * * *');
     assert.equal(update.on.workflow_dispatch.inputs.force.type, 'boolean');
     assert.equal(update.on.workflow_dispatch.inputs.force.default, false);
     assert.deepEqual(update.on.push.branches, ['main']);

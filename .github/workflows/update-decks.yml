@@ -2,7 +2,8 @@ name: Update Decks
 
 on:
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "17 9,17 * * *" # Daily at 9:17 AM and 5:17 PM Eastern, adjusted for daylight saving time.
+      timezone: America/New_York
   workflow_dispatch:
     inputs:
       force:
