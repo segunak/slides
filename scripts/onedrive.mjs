@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { rm, stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { PublicClientApplication } from '@azure/msal-node';
@@ -70,10 +70,10 @@ export async function connectOneDrive({
         await saveCache(renewedCache);
         log('Saved renewed OneDrive authentication.');
     }
-    return createDriveReader(auth.accessToken, request);
+    return createDriveReader(auth.accessToken, request, log);
 }
 
-export function createDriveReader(accessToken, request = fetch) {
+export function createDriveReader(accessToken, request = fetch, log = console.log) {
     async function graph(resource, select = '') {
         const url = new URL(`https://graph.microsoft.com/v1.0/me/drive${resource}`);
         if (select) url.searchParams.set('$select', select);
@@ -115,36 +115,53 @@ export function createDriveReader(accessToken, request = fetch) {
             return metadata(drivePath(filePath));
         },
         async download(item, destination) {
-            let response = await graph(`/items/${encodeURIComponent(item.id)}/content`);
-            if (response.status === 302) {
-                let location;
+            for (let attempt = 1; ; attempt++) {
+                let created = false;
                 try {
-                    location = new URL(response.headers.get('location'));
-                    if (location.protocol !== 'https:') throw new Error('Expected HTTPS.');
-                } catch {
-                    throw new Error('OneDrive returned an invalid download redirect.');
+                    let response = await graph(`/items/${encodeURIComponent(item.id)}/content`);
+                    if (response.status === 302) {
+                        let location;
+                        try {
+                            location = new URL(response.headers.get('location'));
+                            if (location.protocol !== 'https:') throw new Error('Expected HTTPS.');
+                        } catch {
+                            throw Object.assign(new Error('OneDrive returned an invalid download redirect.'), { retryable: false });
+                        }
+                        try {
+                            // The signed download URL does not need, and must not receive, the Graph bearer token.
+                            response = await request(location, { signal: AbortSignal.timeout(180_000) });
+                        } catch {
+                            throw new Error('PowerPoint download failed or timed out. Retry the workflow.');
+                        }
+                    }
+                    if (!response.ok || !response.body) {
+                        const retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+                        throw Object.assign(new Error(`PowerPoint download failed (HTTP ${response.status}).`), { retryable });
+                    }
+                    try {
+                        const output = createWriteStream(destination, { flags: 'wx' });
+                        created = true;
+                        await pipeline(Readable.fromWeb(response.body), output);
+                    } catch (error) {
+                        if (error?.code === 'EEXIST') {
+                            created = false;
+                            throw Object.assign(new Error('Could not finish the temporary PowerPoint download.'), { retryable: false });
+                        }
+                        throw new Error('Could not finish the temporary PowerPoint download.');
+                    }
+                    if ((await stat(destination)).size !== item.size) {
+                        throw new Error('PowerPoint download size changed or was incomplete. Retry after OneDrive finishes syncing.');
+                    }
+                    const current = await this.getItem(item.id);
+                    if (current.eTag !== item.eTag || current.size !== item.size) {
+                        throw Object.assign(new Error('The PowerPoint changed during download. Retry after OneDrive finishes syncing.'), { retryable: false });
+                    }
+                    return;
+                } catch (error) {
+                    if (created) await rm(destination, { force: true });
+                    if (error?.retryable === false || attempt === 3) throw error;
+                    log(`Retrying PowerPoint download for ${item.name} (${attempt + 1}/3).`);
                 }
-                try {
-                    // The signed download URL does not need, and must not receive, the Graph bearer token.
-                    response = await request(location, { signal: AbortSignal.timeout(180_000) });
-                } catch {
-                    throw new Error('PowerPoint download failed or timed out. Retry the workflow.');
-                }
-            }
-            if (!response.ok || !response.body) {
-                throw new Error(`PowerPoint download failed (HTTP ${response.status}).`);
-            }
-            try {
-                await pipeline(Readable.fromWeb(response.body), createWriteStream(destination, { flags: 'wx' }));
-            } catch {
-                throw new Error('Could not finish the temporary PowerPoint download.');
-            }
-            if ((await stat(destination)).size !== item.size) {
-                throw new Error('PowerPoint download size changed or was incomplete. Retry after OneDrive finishes syncing.');
-            }
-            const current = await this.getItem(item.id);
-            if (current.eTag !== item.eTag || current.size !== item.size) {
-                throw new Error('The PowerPoint changed during download. Retry after OneDrive finishes syncing.');
             }
         }
     };

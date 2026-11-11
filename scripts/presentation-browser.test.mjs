@@ -200,3 +200,51 @@ test('download controls initialize, fit a narrow screen, and download without ad
         assert.equal(after.step, before.step);
     }
 });
+
+test('transparent text-box background animations pass playback and PDF checks while missing shapes still fail', async t => {
+    const player = await correctedPlayer();
+    const stepFor = (spid, key, effect) => ({
+        auto: false, delay: 0, dur: 50, behaviours: [
+            { type: 'set', attrs: ['style.visibility'], to: 'visible', spid, keys: [key], dur: 1, repeat: 1, spd: 1, fill: 'hold', begin: 0, effect, cls: 'entr', wrappers: [] },
+            { type: 'effect', attrs: [], spid, keys: [key], filter: 'fade', transition: 'in', dur: 50, repeat: 1, spd: 1, fill: 'remove', begin: 0, effect, cls: 'entr', wrappers: [] }
+        ]
+    });
+    const buildDeck = async (bgTargetSpid = '4') => {
+        const root = await mkdtemp(path.join(tmpdir(), 'slides-bg-target-test-'));
+        t.after(() => rm(root, { recursive: true, force: true }));
+        const steps = [
+            stepFor(bgTargetSpid, `${bgTargetSpid}:bg`, 0),
+            stepFor('4', '4:p0', 1),
+            stepFor('4', '4:p1', 2)
+        ];
+        const data = {
+            width: 640, height: 360, slides: [{
+                index: 0, number: 1, hidden: false,
+                timing: { main: steps, triggers: [], hidden: [`${bgTargetSpid}:bg`, '4:p0', '4:p1'] }
+            }]
+        };
+        const html = `<!doctype html><html><head><style>${BASE_CSS}</style></head><body class="pp-body">
+<div class="pp-deck pp-deck" data-width="640" data-height="360">
+<section class="pp-slide" id="slide-1" style="width:640px;height:360px">
+<div class="pp-bg" style="background:#091f2c"></div>
+<div class="pp-el pp-sp" data-spid="4" data-layer="slide" style="left:30px;top:40px;width:580px;height:240px">
+<div class="pp-tx" style="left:0;top:0;width:580px;height:240px">
+<div class="pp-p" data-para="0"><span style="font-size:24px;color:#ffffff">First bullet point</span></div>
+<div class="pp-p" data-para="1"><span style="font-size:24px;color:#50e6ff">Second bullet point</span></div>
+</div></div></section></div>
+<script type="application/json" id="pp-data">${JSON.stringify(data)}</script>
+<script>${player}</script></body></html>`;
+        await writeFile(path.join(root, 'index.html'), html);
+        return root;
+    };
+
+    const validRoot = await buildDeck('4');
+    const pdf = path.join(validRoot, 'reading-copy.pdf');
+    assert.deepEqual(await verifyAndExport(validRoot, pdf, { log: () => {} }), { slides: 1 });
+    await validatePdf(pdf, [['First bullet point', 'Second bullet point']], 640, 360);
+
+    const missingShapeRoot = await buildDeck('999');
+    await assert.rejects(verifyAndExport(missingShapeRoot, path.join(missingShapeRoot, 'unpublished.pdf'), { log: () => {} }),
+        /Slide 1: animation target 999:bg was not rendered/);
+});
+

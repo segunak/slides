@@ -26,6 +26,17 @@ export function correctPlayerSource(source) {
       fontStyle: span.style.fontStyle,
       textDecorationLine: span.style.textDecorationLine,
     }]));`],
+        [`const g = el.querySelector(':scope > .pp-geom');
+        els = g ? [g] : [];`, `let g = el.querySelector(':scope > .pp-geom');
+        if (!g) {
+          g = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          g.setAttribute('class', 'pp-geom');
+          g.setAttribute('width', '0');
+          g.setAttribute('height', '0');
+          g.setAttribute('aria-hidden', 'true');
+          el.prepend(g);
+        }
+        els = [g];`],
         ["sp.style.color = st.color ? css(st.color) : '';",
             "sp.style.color = st.color ? css(st.color) : this.textStyles.get(sp).color;"],
         ["sp.style.webkitTextFillColor = st.color ? css(st.color) : '';",

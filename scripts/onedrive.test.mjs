@@ -177,5 +177,54 @@ for (const mode of ['unsafe-redirect', 'http-error', 'short-download', 'edited-d
             assert.doesNotMatch(error.message, /signature=private/);
             return true;
         });
+        assert.deepEqual(await readdir(directory), []);
     });
 }
+
+test('retries interrupted download streams after removing partial files and bounds retries at three attempts', async t => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'slides-download-retry-test-'));
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    const f = fixture();
+    let attempts = 0;
+    let failCount = 2;
+    const brokenStream = () => new ReadableStream({
+        pull(controller) {
+            controller.enqueue(new TextEncoder().encode('pp'));
+            controller.error(new Error('https://download.example/deck?signature=private'));
+        }
+    });
+    f.options.request = async url => {
+        if (url.pathname.endsWith('/content')) {
+            return new Response(null, { status: 302, headers: { location: 'https://download.example/deck?signature=private' } });
+        }
+        if (url.hostname === 'download.example') {
+            attempts++;
+            return attempts <= failCount ? new Response(brokenStream()) : new Response('pptx');
+        }
+        return Response.json(item);
+    };
+    const drive = await connectOneDrive(f.options);
+    const destination = path.join(directory, 'source.pptx');
+    await drive.download(item, destination);
+    assert.equal(attempts, 3);
+    assert.equal(await readFile(destination, 'utf8'), 'pptx');
+    assert.deepEqual(await readdir(directory), ['source.pptx']);
+    assert.match(f.logs.join('\n'), /Retrying PowerPoint download for Deck\.pptx \(2\/3\)/);
+    assert.match(f.logs.join('\n'), /Retrying PowerPoint download for Deck\.pptx \(3\/3\)/);
+    assert.doesNotMatch(f.logs.join('\n'), /signature|private/);
+
+    attempts = 0;
+    failCount = 5;
+    const failedDestination = path.join(directory, 'failed.pptx');
+    await assert.rejects(drive.download(item, failedDestination), /Could not finish the temporary PowerPoint download/);
+    assert.equal(attempts, 3);
+    assert.deepEqual(await readdir(directory), ['source.pptx']);
+
+    // An existing destination file must never be overwritten or deleted by retry cleanup.
+    attempts = 0;
+    failCount = 0;
+    await assert.rejects(drive.download(item, destination), /Could not finish the temporary PowerPoint download/);
+    assert.equal(attempts, 1);
+    assert.equal(await readFile(destination, 'utf8'), 'pptx');
+});
+
